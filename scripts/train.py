@@ -50,9 +50,9 @@ from art import tprint
 from torch.multiprocessing import Lock
 
 from config_files import config_copy
-from trackmania_rl.agents.iqn import make_untrained_iqn_network
-from trackmania_rl.multiprocess.collector_process import collector_process_fn
-from trackmania_rl.multiprocess.learner_process import learner_process_fn
+from MKW_rl.agents.iqn import make_untrained_iqn_network
+from MKW_rl.multiprocess.collector_process import collector_process_fn
+from MKW_rl.multiprocess.learner_process import learner_process_fn
 
 # noinspection PyUnresolvedReferences
 torch.backends.cudnn.benchmark = True

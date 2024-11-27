@@ -12,8 +12,8 @@ import torch
 from torch import multiprocessing as mp
 
 from config_files import config_copy
-from trackmania_rl import utilities
-from trackmania_rl.agents import iqn as iqn
+from MKW_rl import utilities
+from MKW_rl.agents import iqn as iqn
 
 
 def collector_process_fn(
@@ -26,8 +26,8 @@ def collector_process_fn(
     save_dir: Path,
     tmi_port: int,
 ):
-    from trackmania_rl.map_loader import analyze_map_cycle, load_next_map_zone_centers
-    from trackmania_rl.tmi_interaction import game_instance_manager
+    from MKW_rl.map_loader import analyze_map_cycle, load_next_map_zone_centers
+    from MKW_rl.MKW_interaction import game_instance_manager
 
     tmi = game_instance_manager.GameInstanceManager(
         game_spawning_lock=game_spawning_lock,

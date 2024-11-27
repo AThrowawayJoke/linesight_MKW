@@ -18,6 +18,7 @@ from config_files import config_copy
 HOST = "127.0.0.1"
 
 
+
 class MessageType(IntEnum):
     SC_RUN_STEP_SYNC = auto()
     SC_CHECKPOINT_COUNT_CHANGED_SYNC = auto()
@@ -43,7 +44,7 @@ class MessageType(IntEnum):
     C_IS_IN_MENUS = auto()
     C_GET_INPUTS = auto()
 
-
+# self.iface in game_instance_manager.py
 class TMInterface:
     registered = False
 
@@ -59,7 +60,7 @@ class TMInterface:
         print("Shutting down...")
         self.close()
 
-    def register(self, timeout=None):
+    def register(self, timeout=None): # connect to the game
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         signal.signal(signal.SIGINT, self.signal_handler)
         # https://stackoverflow.com/questions/45864828/msg-waitall-combined-with-so-rcvtimeo
@@ -76,17 +77,17 @@ class TMInterface:
         self.registered = True
         print("Connected")
 
-    def rewind_to_state(self, state):
+    def rewind_to_state(self, state): # load to specific state
         self.sock.sendall(struct.pack("ii", MessageType.C_REWIND_TO_STATE, np.int32(len(state.data))))
         self.sock.sendall(state.data)
 
-    def rewind_to_current_state(self):
+    def rewind_to_current_state(self): # load to most recent state
         self.sock.sendall(struct.pack("i", MessageType.C_REWIND_TO_CURRENT_STATE))
 
     def reset_camera(self):
         self.sock.sendall(struct.pack("i", MessageType.C_RESET_CAMERA))
 
-    def get_simulation_state(self):
+    def get_simulation_state(self): # send data about the game state? specifically checkpoints
         self.sock.sendall(struct.pack("i", MessageType.C_GET_SIMULATION_STATE))
         state_length = self._read_int32()
         state = SimStateData(self.sock.recv(state_length, socket.MSG_WAITALL))
@@ -94,7 +95,7 @@ class TMInterface:
         state.cp_data.resize(CheckpointData.cp_times_field, state.cp_data.cp_times_length)
         return state
 
-    def set_input_state(self, left: bool, right: bool, accelerate: bool, brake: bool):
+    def set_input_state(self, left: bool, right: bool, accelerate: bool, brake: bool): # save state of inputs only
         self.sock.sendall(
             struct.pack("iBBBB", MessageType.C_SET_INPUT_STATE, np.uint8(left), np.uint8(right), np.uint8(accelerate), np.uint8(brake))
         )
@@ -127,7 +128,7 @@ class TMInterface:
         self.sock.sendall(struct.pack("i", MessageType.C_UNREQUEST_FRAME))
 
     def get_frame(self, width: int, height: int):
-        frame_data = self.sock.recv(width * height * 4, socket.MSG_WAITALL)
+        frame_data = self.sock.recv(width * height * 4, socket.MSG_WAITALL) # receive a frame
         return np.frombuffer(frame_data, dtype=np.uint8).reshape((height, width, 4))
 
     def toggle_interface(self, new_val: bool):

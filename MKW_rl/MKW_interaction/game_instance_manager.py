@@ -35,11 +35,12 @@ import numpy.typing as npt
 import psutil
 
 from config_files import config_copy, user_config
-from trackmania_rl import contact_materials, map_loader
-from trackmania_rl.tmi_interaction.tminterface2 import MessageType, TMInterface
+from MKW_rl import contact_materials, map_loader
+from MKW_rl.MKW_interaction.tminterface2 import MessageType, TMInterface
 
 if config_copy.is_linux:
-    from xdo import Xdo
+    # from xdo import Xdo
+    pass
 else:
     import win32.lib.win32con as win32con
     import win32com.client
@@ -50,7 +51,8 @@ else:
 def _set_window_focus(trackmania_window):
     # https://stackoverflow.com/questions/14295337/win32gui-setactivewindow-error-the-specified-procedure-could-not-be-found
     if config_copy.is_linux:
-        Xdo().activate_window(trackmania_window)
+        # Xdo().activate_window(trackmania_window)
+        pass
     else:
         shell = win32com.client.Dispatch("WScript.Shell")
         shell.SendKeys("%")
@@ -59,7 +61,8 @@ def _set_window_focus(trackmania_window):
 
 def ensure_not_minimized(trackmania_window):
     if config_copy.is_linux:
-        Xdo().map_window(trackmania_window)
+        # Xdo().map_window(trackmania_window)
+        pass
     else:
         if win32gui.IsIconic(
             trackmania_window
@@ -133,7 +136,7 @@ class GameInstanceManager:
         assert self.tm_process_id is not None
 
         if config_copy.is_linux:
-            self.tm_window_id = None
+            """self.tm_window_id = None
             while self.tm_window_id is None:  # This outer while is for the edge case where the window may not have had time to be launched
                 window_search_depth = 1
                 while True:  # This inner while is to try and find the right depth of the window in Xdo().search_windows()
@@ -153,7 +156,8 @@ class GameInstanceManager:
                             window_search_depth,
                         )
                         break
-                    window_search_depth += 1
+                    window_search_depth += 1"""
+            pass
         else:
 
             def get_hwnds_for_pid(pid):
@@ -255,7 +259,7 @@ class GameInstanceManager:
             self.launch_game()
 
     def grab_screen(self):
-        return self.iface.get_frame(config_copy.W_downsized, config_copy.H_downsized)
+        return self.iface.get_frame(config_copy.W_downsized, config_copy.H_downsized) # set the width and height of the captured frame
 
     def request_speed(self, requested_speed: float):
         self.iface.set_speed(requested_speed)
@@ -265,7 +269,7 @@ class GameInstanceManager:
         if (
             len(rollout_results["actions"]) == 0 or rollout_results["actions"][-1] != action_idx
         ):  # Small performance trick, don't update input_state if it doesn't need to be updated
-            self.iface.set_input_state(**config_copy.inputs[action_idx])
+            self.iface.set_input_state(**config_copy.inputs[action_idx]) # inputs from inputs_list.py
 
     def request_map(self, map_path: str, zone_centers: npt.NDArray):
         self.latest_map_path_requested = map_path
@@ -289,7 +293,7 @@ class GameInstanceManager:
             normalized_vector_along_track_axis,
         ) = map_loader.precalculate_virtual_checkpoints_information(zone_centers)
 
-        self.ensure_game_launched()
+        self.ensure_game_launched() # Also ensure MKW is launched
         if time.perf_counter() - self.last_game_reboot > config_copy.game_reboot_interval:
             self.close_game()
             self.iface = None
@@ -308,6 +312,7 @@ class GameInstanceManager:
         instrumentation__convert_frame = 0
         instrumentation__grab_floats = 0
 
+        # everything we pass to the AI about the game
         rollout_results = {
             "current_zone_idx": [],
             "frames": [],
@@ -323,16 +328,16 @@ class GameInstanceManager:
 
         last_progress_improvement_ms = 0
 
-        if (self.iface is None) or (not self.iface.registered):
+        if (self.iface is None) or (not self.iface.registered): # Game was not connected to the program?
             assert self.msgtype_response_to_wakeup_TMI is None
             print("Initialize connection to TMInterface ")
-            self.iface = TMInterface(self.tmi_port)
+            self.iface = TMInterface(self.tmi_port) # reset the interface
 
             connection_attempts_start_time = time.perf_counter()
             last_connection_error_message_time = time.perf_counter()
             while True:
                 try:
-                    self.iface.register(config_copy.tmi_protection_timeout_s)
+                    self.iface.register(config_copy.tmi_protection_timeout_s) # connect to the interface
                     break
                 except ConnectionRefusedError as e:
                     current_time = time.perf_counter()
@@ -340,9 +345,9 @@ class GameInstanceManager:
                         print(f"Connection to TMInterface unsuccessful for {current_time - connection_attempts_start_time:.1f}s")
                         last_connection_error_message_time = current_time
         else:
-            assert self.msgtype_response_to_wakeup_TMI is not None or self.last_rollout_crashed
+            assert self.msgtype_response_to_wakeup_TMI is not None or self.last_rollout_crashed # Game is running and connected
 
-            self.request_speed(self.running_speed)
+            self.request_speed(self.running_speed) # FPS?
             if self.msgtype_response_to_wakeup_TMI is not None:
                 self.iface._respond_to_call(self.msgtype_response_to_wakeup_TMI)
                 self.msgtype_response_to_wakeup_TMI = None
@@ -352,6 +357,7 @@ class GameInstanceManager:
         _time = -3000
         current_zone_idx = config_copy.n_zone_centers_extrapolate_before_start_of_map
 
+        # Insert values for the start of a race
         give_up_signal_has_been_sent = False
         this_rollout_has_seen_t_negative = False
         this_rollout_is_finished = False
@@ -548,6 +554,7 @@ class GameInstanceManager:
                         simulation_state = self.iface.get_simulation_state()
                         race_time = max([simulation_state.race_time, 1e-12])  # Epsilon trick to avoid division by zero
 
+                        # set statistics for the race
                         end_race_stats["race_finished"] = False
                         end_race_stats["race_time"] = config_copy.cutoff_rollout_if_race_not_finished_within_duration_ms
                         end_race_stats["race_time_for_ratio"] = race_time
@@ -583,10 +590,10 @@ class GameInstanceManager:
                             if compute_action_asap:
                                 compute_action_asap_floats = True
                                 frame_expected = True
-                                self.iface.request_frame(config_copy.W_downsized, config_copy.H_downsized)
+                                self.iface.request_frame(config_copy.W_downsized, config_copy.H_downsized) # request a new frame for the ai to process
 
-                            if _time % (10 * self.run_steps_per_action * config_copy.update_inference_network_every_n_actions) == 0:
-                                update_network()
+                            if _time % (10 * self.run_steps_per_action * config_copy.update_inference_network_every_n_actions) == 0: # don't run the network every frame
+                                update_network() # RUN THE ALGORITHM!
 
                     # ============================
                     # END ON RUN STEP
@@ -685,7 +692,7 @@ class GameInstanceManager:
                     self.iface._read_int32()
                     self.iface._read_int32()
                     self.iface._respond_to_call(msgtype)
-                elif msgtype == int(MessageType.SC_REQUESTED_FRAME_SYNC):
+                elif msgtype == int(MessageType.SC_REQUESTED_FRAME_SYNC):# Sync the interface to the current frame
                     frame = self.grab_screen()
                     frame_expected = False
                     if (
@@ -721,6 +728,7 @@ class GameInstanceManager:
                             end_race_stats["value_starting_frame"] = q_value
                             for i, val in enumerate(np.nditer(q_values)):
                                 end_race_stats[f"q_value_{i}_starting_frame"] = val
+                        # save current mid-race results
                         rollout_results["meters_advanced_along_centerline"].append(distance_since_track_begin)
                         rollout_results["input_w"].append(config_copy.inputs[action_idx]["accelerate"])
                         rollout_results["actions"].append(action_idx)
@@ -747,6 +755,7 @@ class GameInstanceManager:
                 elif msgtype == int(MessageType.SC_ON_CONNECT_SYNC):
                     if self.latest_map_path_requested == -1:  # Game was relaunched and must have console open
                         self.iface.execute_command("toggle_console")
+                    # reset game and reload map
                     self.request_speed(1)
                     self.iface.set_on_step_period(self.run_steps_per_action * 10)
                     self.iface.execute_command(f"set countdown_speed {self.running_speed}")
@@ -762,11 +771,12 @@ class GameInstanceManager:
                     self.iface._respond_to_call(msgtype)
                 else:
                     pass
+                # End while loop
         except socket.timeout as err:
-            print("Cutoff rollout due to TMI timeout", err)
+            print("Cutoff rollout due to TMI timeout", err) # program is hanging
             self.iface.close()
             end_race_stats["tmi_protection_cutoff"] = True
             self.last_rollout_crashed = True
             ensure_not_minimized(self.tm_window_id)
 
-        return rollout_results, end_race_stats
+        return rollout_results, end_race_stats # return everything about the run

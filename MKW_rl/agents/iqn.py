@@ -16,7 +16,7 @@ import torch
 from torchrl.data import ReplayBuffer
 
 from config_files import config_copy
-from trackmania_rl import utilities
+from MKW_rl import utilities
 
 
 class IQN_Network(torch.nn.Module):

@@ -3,6 +3,12 @@ Convert a batch of "xxxxxxxx.inputs" to the corresponding "xxxxxx.Replay.Gbx" fi
 Works on Agade's computer, not on pb4's.
 """
 
+"""
+TODO: Convert this program to MKW input lists instead of Replay.gbx
+There should already exist programs that do this, but it is unclear if they are the preferred method.
+Also note that a free cam mod would be extremely useful for video creation, although this may be a task too tall
+"""
+
 import argparse
 import os
 import shutil
@@ -14,8 +20,8 @@ import numpy as np
 import psutil
 
 from config_files import config
-from trackmania_rl import map_loader
-from trackmania_rl.tmi_interaction.tminterface2 import MessageType, TMInterface
+from MKW_rl import map_loader
+from MKW_rl.MKW_interaction.tminterface2 import MessageType, TMInterface
 
 if config.is_linux:
     import pyautogui as input_lib
@@ -85,7 +91,7 @@ def launch_game(tmi_port):
                 + '" /configstring=\\"set custom_port '
                 + str(tmi_port)
                 + '\\"\'; echo exit $process.id}" "'
-                + str(config.windows_TMLoader_path)
+                + str(config.windows_Dolphinexe_path)
                 + '"'
             )
 

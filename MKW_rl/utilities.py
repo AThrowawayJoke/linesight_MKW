@@ -12,7 +12,7 @@ import numpy as np
 import torch
 from prettytable import PrettyTable
 
-from trackmania_rl import run_to_video
+from MKW_rl import run_to_video
 
 
 def init_kaiming(layer, neg_slope=0, nonlinearity="leaky_relu"):

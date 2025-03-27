@@ -15,7 +15,7 @@ import torch
 from PIL import Image
 
 from config_files import config_copy
-from trackmania_rl.agents.iqn import iqn_loss
+from  MKW_rl.agents.iqn import iqn_loss
 
 
 def batched(iterable, n):  # Can be included from itertools with python >=3.12

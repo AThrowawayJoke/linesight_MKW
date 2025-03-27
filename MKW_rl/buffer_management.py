@@ -12,8 +12,8 @@ from numba import jit
 from torchrl.data import ReplayBuffer
 
 from config_files import config_copy
-from trackmania_rl.experience_replay.experience_replay_interface import Experience
-from trackmania_rl.reward_shaping import speedslide_quality_tarmac
+from MKW_rl.experience_replay.experience_replay_interface import Experience
+from MKW_rl.reward_shaping import speedslide_quality_tarmac
 
 
 @jit(nopython=True)

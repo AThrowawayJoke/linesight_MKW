@@ -22,18 +22,18 @@ from torch.utils.tensorboard import SummaryWriter
 from torchrl.data.replay_buffers import PrioritizedSampler
 
 from config_files import config_copy
-from trackmania_rl import buffer_management, utilities
-from trackmania_rl.agents import iqn as iqn
-from trackmania_rl.agents.iqn import make_untrained_iqn_network
-from trackmania_rl.analysis_metrics import (
+from MKW_rl import buffer_management, utilities
+from MKW_rl.agents import iqn as iqn
+from MKW_rl.agents.iqn import make_untrained_iqn_network
+from MKW_rl.analysis_metrics import (
     distribution_curves,
     highest_prio_transitions,
     loss_distribution,
     race_time_left_curves,
     tau_curves,
 )
-from trackmania_rl.buffer_utilities import make_buffers, resize_buffers
-from trackmania_rl.map_reference_times import reference_times
+from MKW_rl.buffer_utilities import make_buffers, resize_buffers
+from MKW_rl.map_reference_times import reference_times
 
 
 def learner_process_fn(

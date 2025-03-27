@@ -21,7 +21,7 @@ import shutil
 from pathlib import Path
 
 
-def copy_configuration_file():
+def copy_configuration_file(): # save config file so we don't overwrite it and you can edit it while RL is happening
     base_dir = Path(__file__).resolve().parents[1]
     shutil.copyfile(
         base_dir / "config_files" / "config.py",
@@ -29,7 +29,7 @@ def copy_configuration_file():
     )
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # non-debug mode is a go
     copy_configuration_file()
 
 # =======================================================================================================================
@@ -40,7 +40,7 @@ import ctypes
 import os
 import random
 import signal
-import sys
+import sys, inspect
 import time
 
 import numpy as np
@@ -49,11 +49,18 @@ import torch.multiprocessing as mp
 from art import tprint
 from torch.multiprocessing import Lock
 
+
+"""cmd_subfolder = os.path.realpath(os.path.abspath(os.path.join(os.path.split(inspect.getfile( inspect.currentframe() ))[0],"/config_files")))
+if cmd_subfolder not in sys.path:
+    sys.path.insert(0, cmd_subfolder)"""
+
+
 from config_files import config_copy
 from MKW_rl.agents.iqn import make_untrained_iqn_network
 from MKW_rl.multiprocess.collector_process import collector_process_fn
 from MKW_rl.multiprocess.learner_process import learner_process_fn
 
+# Set torch settings for RL
 # noinspection PyUnresolvedReferences
 torch.backends.cudnn.benchmark = True
 torch.set_num_threads(1)
@@ -65,8 +72,8 @@ random.seed(random_seed)
 np.random.seed(random_seed)
 
 
-def signal_handler(sig, frame):
-    print("Received SIGINT signal. Killing all open Trackmania instances.")
+def signal_handler(sig, frame): # receive command to kill game instances
+    print("Received SIGINT signal. Killing all open Dolphin instances.")
     clear_tm_instances()
 
     for child in mp.active_children():
@@ -76,26 +83,26 @@ def signal_handler(sig, frame):
     sys.exit()
 
 
-def clear_tm_instances():
+def clear_tm_instances(): # stop all instances of the game
     if config_copy.is_linux:
-        os.system("pkill -9 TmForever.exe")
+        os.system("pkill -9 Dolphin.exe")
     else:
-        os.system("taskkill /F /IM TmForever.exe")
+        os.system("taskkill /F /IM Dolphin.exe")
 
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
 
-    clear_tm_instances()
+    clear_tm_instances() # ensure we're starting fresh here, and old instances aren't used
 
-    base_dir = Path(__file__).resolve().parents[1]
-    save_dir = base_dir / "save" / config_copy.run_name
+    base_dir = Path(__file__).resolve().parents[1] # get base directory this program is running in
+    save_dir = base_dir / "save" / config_copy.run_name # put save data within this directory
     save_dir.mkdir(parents=True, exist_ok=True)
-    tensorboard_base_dir = base_dir / "tensorboard"
+    tensorboard_base_dir = base_dir / "tensorboard" # save tensorboard information
 
     # Copy Angelscript plugin to TMInterface dir
     shutil.copyfile(
-        base_dir / "trackmania_rl" / "tmi_interaction" / "Python_Link.as",
+        base_dir / "MKW_rl" / "MKW_interaction" / "Python_Link.as",
         config_copy.target_python_link_path,
     )
 
@@ -115,8 +122,8 @@ if __name__ == "__main__":
     rollout_queues = [mp.Queue(config_copy.max_rollout_queue_size) for _ in range(config_copy.gpu_collectors_count)]
     shared_network_lock = Lock()
     game_spawning_lock = Lock()
-    _, uncompiled_shared_network = make_untrained_iqn_network(jit=config_copy.use_jit, is_inference=False)
-    uncompiled_shared_network.share_memory()
+    _, uncompiled_shared_network = make_untrained_iqn_network(jit=config_copy.use_jit, is_inference=False) # initialize the network
+    uncompiled_shared_network.share_memory() # share network memory for multi-threading
 
     # Start worker process
     collector_processes = [
@@ -133,7 +140,7 @@ if __name__ == "__main__":
                 config_copy.base_tmi_port + process_number,
             ),
         )
-        for rollout_queue, process_number in zip(rollout_queues, range(config_copy.gpu_collectors_count))
+        for rollout_queue, process_number in zip(rollout_queues, range(config_copy.gpu_collectors_count)) # create specified number of instances for RL
     ]
     for collector_process in collector_processes:
         collector_process.start()
@@ -142,4 +149,4 @@ if __name__ == "__main__":
     learner_process_fn(rollout_queues,uncompiled_shared_network,shared_network_lock,shared_steps,base_dir,save_dir,tensorboard_base_dir) #Turn main process into learner process instead of starting a new one, this saves 1 CUDA context
 
     for collector_process in collector_processes:
-        collector_process.join()
+        collector_process.join() # combine processes for learning and/or completion?

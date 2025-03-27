@@ -1,3 +1,26 @@
+from dolphin import controller # type: ignore
+
+
+"""
+    A: bool
+    B: bool
+    X: bool
+    Y: bool
+    Z: bool
+    Start: bool
+    Up: bool
+    Down: bool
+    Left: bool
+    Right: bool
+    L: bool
+    R: bool
+    StickX: float
+    StickY: float
+    CStickX: float
+    CStickY: float
+    TriggerLeft: float
+    TriggerRight: float"""
+
 inputs = [
     {  # 0 Forward
         "left": False,

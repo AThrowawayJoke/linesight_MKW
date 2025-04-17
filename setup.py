@@ -1,3 +1,4 @@
+# It is recommended to use 'pip install -e .' to install necessary packages.
 from setuptools import setup, find_packages
 
 def read_requirements(filename):
@@ -16,7 +17,7 @@ setup(
     ],
     python_requires='>=3.10.0,<3.13.0', # ensure all packages are installed with correct python version
     install_requires=read_requirements('requirements_pip.txt') + read_requirements('requirements_conda.txt'),
-    packages=find_packages(include=["MKW_rl", "config_files"]),
+    packages=find_packages(include=["MKW_rl", "config_files", "dolphin", "mkw_scripts\\Modules"]),
     extras_require={
         "doc": ["sphinx", "sphinx_rtd_theme", "sphinxcontrib.youtube"],
     },

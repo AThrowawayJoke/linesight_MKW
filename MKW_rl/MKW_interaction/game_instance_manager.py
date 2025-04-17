@@ -286,20 +286,26 @@ class GameInstanceManager:
         ) = map_loader.sync_virtual_and_real_checkpoints(zone_centers, map_path)
 
     def rollout(self, exploration_policy: Callable, map_path: str, zone_centers: npt.NDArray, update_network: Callable):
+        """
+        exploration_policy: Function that returns ratio of exploration vs exploitation runs
+        map_path: file path to current map to run
+        zone_centers: checkpoint information for rewards, likely unnecessary for MKW
+        update_network: function to send the network information to update itself with?
+        """
         (
             zone_transitions,
             distance_between_zone_transitions,
             distance_from_start_track_to_prev_zone_transition,
             normalized_vector_along_track_axis,
-        ) = map_loader.precalculate_virtual_checkpoints_information(zone_centers)
+        ) = map_loader.precalculate_virtual_checkpoints_information(zone_centers) # information about checkpoints for rewards
 
         self.ensure_game_launched() # Also ensure MKW is launched
-        if time.perf_counter() - self.last_game_reboot > config_copy.game_reboot_interval:
+        if time.perf_counter() - self.last_game_reboot > config_copy.game_reboot_interval: # stale instance of game
             self.close_game()
             self.iface = None
             self.launch_game()
 
-        end_race_stats = {
+        end_race_stats = { # race stats to send to network and/or save to disk
             "cp_time_ms": [0],
         }
 
@@ -312,7 +318,7 @@ class GameInstanceManager:
         instrumentation__convert_frame = 0
         instrumentation__grab_floats = 0
 
-        # everything we pass to the AI about the game
+        # everything we pass to the network about the game -- HEYO THIS IS THE IMPORTANT STUFF
         rollout_results = {
             "current_zone_idx": [],
             "frames": [],
@@ -328,7 +334,7 @@ class GameInstanceManager:
 
         last_progress_improvement_ms = 0
 
-        if (self.iface is None) or (not self.iface.registered): # Game was not connected to the program?
+        if (self.iface is None) or (not self.iface.registered): # Game was not connected to the program
             assert self.msgtype_response_to_wakeup_TMI is None
             print("Initialize connection to TMInterface ")
             self.iface = TMInterface(self.tmi_port) # reset the interface
@@ -354,7 +360,7 @@ class GameInstanceManager:
 
         self.last_rollout_crashed = False
 
-        _time = -3000
+        _time = -3000 # track how long this rollout has been going
         current_zone_idx = config_copy.n_zone_centers_extrapolate_before_start_of_map
 
         # Insert values for the start of a race
@@ -376,7 +382,7 @@ class GameInstanceManager:
 
         try:
             while not this_rollout_is_finished:
-                if compute_action_asap_floats:
+                if compute_action_asap_floats: # Reprocess game state
                     pc2 = time.perf_counter_ns()
 
                     sim_state_race_time = last_known_simulation_state.race_time
@@ -431,13 +437,13 @@ class GameInstanceManager:
                             self.max_allowable_distance_to_real_checkpoint,
                         )
 
-                    if current_zone_idx > rollout_results["furthest_zone_idx"]:
+                    if current_zone_idx > rollout_results["furthest_zone_idx"]: # we have gone farther on the track
                         last_progress_improvement_ms = sim_state_race_time
                         rollout_results["furthest_zone_idx"] = current_zone_idx
 
                     rollout_results["current_zone_idx"].append(current_zone_idx)
 
-                    meters_in_current_zone = np.clip(
+                    meters_in_current_zone = np.clip( # calculate how far in the zone we are
                         (sim_state_position - zone_transitions[current_zone_idx - 1]).dot(
                             normalized_vector_along_track_axis[current_zone_idx - 1]
                         ),
@@ -499,7 +505,7 @@ class GameInstanceManager:
                     ).astype(np.float32)
 
                     pc5 = time.perf_counter_ns()
-                    instrumentation__grab_floats += pc5 - pc2
+                    instrumentation__grab_floats += pc5 - pc2 # time it took to save game information
 
                     compute_action_asap_floats = False
 
@@ -509,7 +515,7 @@ class GameInstanceManager:
                 #        READ INCOMING MESSAGES
                 # =============================================
                 if msgtype == int(MessageType.SC_RUN_STEP_SYNC):
-                    _time = self.iface._read_int32()
+                    _time = self.iface._read_int32() # read the incoming message
 
                     if _time > 0 and this_rollout_has_seen_t_negative:
                         if _time % 50 == 0:
@@ -521,37 +527,39 @@ class GameInstanceManager:
                     # ============================
 
                     if not self.timeout_has_been_set:
-                        self.iface.set_timeout(config_copy.timeout_during_run_ms)
-                        self.iface.execute_command(f"cam {config_copy.game_camera_number}")
+                        self.iface.set_timeout(config_copy.timeout_during_run_ms) # mini-race time limit
+                        self.iface.execute_command(f"cam {config_copy.game_camera_number}") # set cam for ai to learn from
                         self.timeout_has_been_set = True
 
                     if not self.UI_disabled and _time < map_change_requested_time:
-                        self.iface.toggle_interface(False)
+                        self.iface.toggle_interface(False) # ensure UI is disabled
                         self.UI_disabled = True
 
-                    if _time == 0 and (map_path not in self.start_states):
-                        self.start_states[map_path] = self.iface.get_simulation_state()
+                    # Create starting savestate and save it (this run just started at _time = 0)
+                    if _time == 0 and (map_path not in self.start_states): # we have spent all the time we have?
+                        self.start_states[map_path] = self.iface.get_simulation_state() # set the start state for this map to reload later
 
+                    # load a new map
                     if (not give_up_signal_has_been_sent) and (map_path != self.latest_map_path_requested):
-                        self.request_map(map_path, zone_centers)
-
+                        self.request_map(map_path, zone_centers) # load requested map to train on
                         map_change_requested_time = _time
                         give_up_signal_has_been_sent = True
-                    elif (not give_up_signal_has_been_sent) and (map_path not in self.start_states):
+                    # Error encountered loading savestate for map
+                    elif (not give_up_signal_has_been_sent) and (map_path not in self.start_states): # we're not in the correct map
                         self.iface.give_up()
                         give_up_signal_has_been_sent = True
-                    elif not give_up_signal_has_been_sent:
+                    elif not give_up_signal_has_been_sent: # we're in the correct map and starting a new run?
                         self.iface.rewind_to_state(self.start_states[map_path])
                         _time = 0
                         give_up_signal_has_been_sent = True
                         this_rollout_has_seen_t_negative = True
-                    elif (
+                    elif ( # we are in the middle of a run, check we have made progress in time and haven't gone over the max time allotted
                         (_time > self.max_overall_duration_ms or _time > last_progress_improvement_ms + self.max_minirace_duration_ms)
                         and this_rollout_has_seen_t_negative
                         and not this_rollout_is_finished
                     ):
                         # FAILED TO FINISH IN TIME
-                        simulation_state = self.iface.get_simulation_state()
+                        simulation_state = self.iface.get_simulation_state() # set this state as a new starting point and for info extraction
                         race_time = max([simulation_state.race_time, 1e-12])  # Epsilon trick to avoid division by zero
 
                         # set statistics for the race
@@ -570,20 +578,20 @@ class GameInstanceManager:
                         )
                         end_race_stats["tmi_protection_cutoff"] = False
 
-                        self.iface.rewind_to_current_state()
+                        self.iface.rewind_to_current_state() # load back to start of race?
 
                         self.msgtype_response_to_wakeup_TMI = msgtype
                         self.iface.set_timeout(config_copy.timeout_between_runs_ms)
                         if frame_expected:
                             self.iface.unrequest_frame()
                             frame_expected = False
-                        this_rollout_is_finished = True
+                        this_rollout_is_finished = True # Rollout is finished as the mini-race is over
 
                     if not this_rollout_is_finished:
                         this_rollout_has_seen_t_negative |= _time < 0
 
                         if _time >= 0 and _time % (10 * self.run_steps_per_action) == 0 and this_rollout_has_seen_t_negative:
-                            last_known_simulation_state = self.iface.get_simulation_state()
+                            last_known_simulation_state = self.iface.get_simulation_state() # save this state before rewinding
                             self.iface.rewind_to_current_state()
                             self.request_speed(0)
                             compute_action_asap = True  # not self.iface.race_finished() #Paranoid check that the race is not finished, which I think could happen because on_step comes before on_cp_count
@@ -593,7 +601,7 @@ class GameInstanceManager:
                                 self.iface.request_frame(config_copy.W_downsized, config_copy.H_downsized) # request a new frame for the ai to process
 
                             if _time % (10 * self.run_steps_per_action * config_copy.update_inference_network_every_n_actions) == 0: # don't run the network every frame
-                                update_network() # RUN THE ALGORITHM!
+                                update_network()
 
                     # ============================
                     # END ON RUN STEP
@@ -601,6 +609,7 @@ class GameInstanceManager:
                     if self.msgtype_response_to_wakeup_TMI is None:
                         self.iface._respond_to_call(msgtype)
 
+                    # update our performance counter
                     if _time > 0 and this_rollout_has_seen_t_negative:
                         if _time % 40 == 0:
                             instrumentation__answer_normal_step += time.perf_counter_ns() - pc
@@ -612,7 +621,7 @@ class GameInstanceManager:
                     current = self.iface._read_int32()
                     target = self.iface._read_int32()
 
-                    simulation_state = self.iface.get_simulation_state()
+                    simulation_state = self.iface.get_simulation_state() # save new progress to a state
                     end_race_stats["cp_time_ms"].append(simulation_state.race_time)
                     # ============================
                     # BEGIN ON CP COUNT
@@ -624,7 +633,7 @@ class GameInstanceManager:
                             cp_times_bug_handling_attempts += 1
                         if len(simulation_state.cp_data.cp_times) != 0:
                             simulation_state.cp_data.cp_times[-1].time = -1  # Equivalent to prevent_simulation_finish()
-                            self.iface.rewind_to_state(simulation_state)
+                            self.iface.rewind_to_state(simulation_state) # rewind to the previous state
                         else:
                             self.iface.prevent_simulation_finish()
 
@@ -696,21 +705,22 @@ class GameInstanceManager:
                     frame = self.grab_screen()
                     frame_expected = False
                     if (
-                        give_up_signal_has_been_sent
+                        give_up_signal_has_been_sent # the run is in progress
                         and this_rollout_has_seen_t_negative
                         and not this_rollout_is_finished
-                        and compute_action_asap
+                        and compute_action_asap # we are ready to compute a new action
                     ):
                         pc6 = time.perf_counter_ns()
-                        instrumentation__grab_frame += pc6 - pc5
+                        instrumentation__grab_frame += pc6 - pc5 # how long it took to collect the frame
                         assert self.latest_tm_engine_speed_requested == 0
                         assert not compute_action_asap_floats
                         frame = np.expand_dims(cv2.cvtColor(frame, cv2.COLOR_BGRA2GRAY), 0)
                         # frame is a numpy array of shape (1, H, W) and dtype np.uint8
                         rollout_results["frames"].append(frame)
                         pc7 = time.perf_counter_ns()
-                        instrumentation__convert_frame += pc7 - pc6
+                        instrumentation__convert_frame += pc7 - pc6 # Time it took to convert the frame and save it
 
+                        # Call exploration_policy and receive information about what action should be taken next
                         (
                             action_idx,
                             action_was_greedy,
@@ -719,9 +729,9 @@ class GameInstanceManager:
                         ) = exploration_policy(rollout_results["frames"][-1], floats)
 
                         pc8 = time.perf_counter_ns()
-                        instrumentation__exploration_policy += pc8 - pc7
+                        instrumentation__exploration_policy += pc8 - pc7 # time it took for exploration_policy to complete
 
-                        self.request_inputs(action_idx, rollout_results)
+                        self.request_inputs(action_idx, rollout_results) # set inputs based off the previous call to exploration_policy()
                         self.request_speed(self.running_speed)
 
                         if n_th_action_we_compute == 0:
@@ -748,7 +758,7 @@ class GameInstanceManager:
                                 # but this needs to be done late enough AND not when another game instance is starting.
                                 self.game_spawning_lock.release()
 
-                        instrumentation__request_inputs_and_speed += time.perf_counter_ns() - pc8
+                        instrumentation__request_inputs_and_speed += time.perf_counter_ns() - pc8 # time it took to set inputs and save rollout_results
                     self.iface._respond_to_call(msgtype)
                 elif msgtype == int(MessageType.C_SHUTDOWN):
                     self.iface.close()

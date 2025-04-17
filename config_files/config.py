@@ -28,7 +28,7 @@ from config_files.user_config import *
 W_downsized = 160
 H_downsized = 120
 
-run_name = "run_name_to_be_changed"
+run_name = "MARIO_KART_WII"
 running_speed = 80
 
 tm_engine_step_per_action = 5
@@ -255,9 +255,9 @@ nadeo_maps_to_train_and_test = [
 
 map_cycle = []
 # for map_name in nadeo_maps_to_train_and_test:
-# short_map_name = map_name[0:3]
-# map_cycle.append(repeat((short_map_name, f'"Official Maps\{map_name}.Challenge.Gbx"', f"{map_name}_0.5m_cl2.npy", True, True), 4))
-# map_cycle.append(repeat((short_map_name, f'"Official Maps\{map_name}.Challenge.Gbx"', f"{map_name}_0.5m_cl2.npy", False, True), 1))
+#   short_map_name = map_name[0:3]
+#   map_cycle.append(repeat((short_map_name, f'"Official Maps\{map_name}.Challenge.Gbx"', f"{map_name}_0.5m_cl2.npy", True, True), 4))
+#   map_cycle.append(repeat((short_map_name, f'"Official Maps\{map_name}.Challenge.Gbx"', f"{map_name}_0.5m_cl2.npy", False, True), 1))
 
 
 map_cycle += [

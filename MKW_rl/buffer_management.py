@@ -19,7 +19,7 @@ from MKW_rl.reward_shaping import speedslide_quality_tarmac
 @jit(nopython=True)
 def get_potential(state_float):
     # https://people.eecs.berkeley.edu/~pabbeel/cs287-fa09/readings/NgHaradaRussell-shaping-ICML1999.pdf
-    vector_vcp_to_vcp_further_ahead = state_float[65:68] - state_float[62:65]
+    vector_vcp_to_vcp_further_ahead = state_float[65:68] - state_float[62:65] # hard-coded, adjust to use dictionary? state_float class?
     vector_vcp_to_vcp_further_ahead_normalized = vector_vcp_to_vcp_further_ahead / np.linalg.norm(vector_vcp_to_vcp_further_ahead)
 
     return (
@@ -57,7 +57,7 @@ def fill_buffer_from_rollout_with_n_steps_rule(
     )  # Discount factor that will be placed in front of next_step in Bellman equation, depending on n_steps chosen
 
     reward_into = np.zeros(n_frames)
-    for i in range(1, n_frames):
+    for i in range(1, n_frames): # run for each frame of the rollout
         reward_into[i] += config_copy.constant_reward_per_ms * (
             config_copy.ms_per_action
             if (i < n_frames - 1 or ("race_time" not in rollout_results))

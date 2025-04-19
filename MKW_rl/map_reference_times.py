@@ -1,5 +1,7 @@
 """
 Reference times used to compare the AI's time when logging to tensorboard.
+
+TODO: Set times for all 32 tracks with expert staff ghosts, Retro Rewind expert ghosts, and WRs
 """
 
 reference_times = {

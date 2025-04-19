@@ -35,17 +35,23 @@ class GameInstanceHook():
 
         frame_data_request = socket_data[0]
         game_data_request = socket_data[1]
-        set_new_inputs = socket_data[2]
+        new_inputs = socket_data[2]
+        load_state_request = socket_data[3]
 
-        
-        if set_new_inputs and len(socket_data) >= 4:
-            # TODO: Use input-list index to assign inputs in leiu of sending the full dicti
-            self.desired_inputs = socket_data[3]
-        elif set_new_inputs and not len(socket_data) >= 4:
-            print("ERROR: New inputs set to be delivered but none were provided")
+        if new_inputs is not None:
+            self.desired_inputs = new_inputs
+
+        if load_state_request is not None:
+            print("Attempting to load new savestate with file location:", socket_data[3])
+            savestate.load_from_file(socket_data[3])
+            if frame_data_request:
+                print("ERROR: Savestate file received but got unactionable frame data request")
+            if game_data_request:
+                print("ERROR: Savestate file received but got unactionable game data request")
+            return
 
         if frame_data_request:
-            self.conn.sendall(self.current_unprocessed_frame)
+            self.conn.sendall(self.current_unprocessed_frame) # unsure if i should pre-process frame or not...
 
             # width * height * 4, socket.MSG_WAITALL # server recv to receive frame data because it's big
 
@@ -62,12 +68,12 @@ class GameInstanceHook():
         
         if game_data_request:
             kart_pos_rot = self.game_data_interface.get_kart_position_and_rotation()
-            kart_velocity = self.game_data_interface.get_kart_velocities()
+            kart_velocity = self.game_data_interface.get_kart_velocities() # Returns dicti of 4 vectors, "external_velocity", "internal_velocity", "moving_road_velocity", and "moving_water_velocity"
             checkpoint_data = self.game_data_interface.get_checkpoint_data()
-            driving_direction = self.game_data_interface.get_driving_direction()
+            driving_direction = self.game_data_interface.get_driving_direction() # likely not useful
             item_count = self.game_data_interface.get_item_count()
             self.conn.sendall(pickle.dumps([kart_pos_rot, kart_velocity, checkpoint_data, driving_direction, item_count]))
-        # process and send the image data here, so we can set desired_inputs before we exit the function
+        # send the image data here, so we can set desired_inputs before we exit the function
             
     def frameadvance_handler(self):
         self.frame_counter += 1
@@ -86,6 +92,7 @@ class GameInstanceHook():
         last_connection_error_message_time = time.perf_counter()
 
         self.listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.listener.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.listener.bind(HOST, self.port)
         print("Game hook socket binded on port", self.port)
 

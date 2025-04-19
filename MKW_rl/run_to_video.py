@@ -4,6 +4,8 @@ This file contains various utilities to:
     - make a video-widget showing the agent's inputs and beliefs (ie: state value and action advantage)
 """
 
+# TODO: Unlikely to need for MKW, use TAS community resources instead
+
 import subprocess
 import tempfile
 from pathlib import Path
@@ -77,7 +79,7 @@ def make_widget_video_from_q_values_on_disk(q_values_path: Path, video_path: Pat
 
 def make_widget_video_from_q_values(q_values: List, video_path: Path, q_value_gap):
     with tempfile.TemporaryDirectory() as zou_dir:
-        path_str = "C:\\Users\\chopi\\projects\\trackmania_rl\\temp"
+        path_str = "C:\\Users\\chopi\\projects\\trackmania_rl\\temp" # TODO: for input visualization, possible that this is arrow keys only. Likely unnecessary.
         temp_dir = Path(path_str)
         # Place the keys where they should be
         key_reorder = [1, 0, 2, 4, 3, 5, 10, 9, 11, 7, 6, 8]

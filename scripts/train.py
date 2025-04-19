@@ -29,7 +29,7 @@ def copy_configuration_file(): # save config file so we don't overwrite it and y
     )
 
 
-if __name__ == "__main__": # non-debug mode is a go
+if __name__ == "__main__":
     copy_configuration_file()
 
 # =======================================================================================================================
@@ -100,11 +100,11 @@ if __name__ == "__main__":
     save_dir.mkdir(parents=True, exist_ok=True)
     tensorboard_base_dir = base_dir / "tensorboard" # save tensorboard information
 
-    # Copy Angelscript plugin to TMInterface dir
+    """# Copy Angelscript plugin to TMInterface dir
     shutil.copyfile(
         base_dir / "MKW_rl" / "MKW_interaction" / "Python_Link.as",
         config_copy.target_python_link_path,
-    )
+    )"""
 
     print("Run:\n\n")
     tprint(config_copy.run_name, font="tarty4")

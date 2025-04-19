@@ -3,6 +3,7 @@ from config_files import config_copy, user_config
 import math
 import os
 import socket
+import pickle
 import struct
 import subprocess
 import time
@@ -20,6 +21,8 @@ import win32gui
 import win32process
 
 HOST = "127.0.0.1"
+FRAME_WIDTH = 834
+FRAME_HEIGHT = 456
 
 class GameManager:
     def __init__(
@@ -82,17 +85,18 @@ class GameManager:
         # https://stackoverflow.com/questions/45864828/msg-waitall-combined-with-so-rcvtimeo
         # https://stackoverflow.com/questions/2719017/how-to-set-timeout-on-pythons-socket-recv-method
         if timeout is not None:
-            if False: # config_copy.is_linux:  # https://stackoverflow.com/questions/46477448/python-setsockopt-what-is-worng
+            if config_copy.is_linux:  # https://stackoverflow.com/questions/46477448/python-setsockopt-what-is-worng
                 timeout_pack = struct.pack("ll", timeout, 0)
             else:
                 timeout_pack = struct.pack("q", timeout * 1000)
+            # Set the maximum amount for time the socket will wait for a response and/or attempt to send data.
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVTIMEO, timeout_pack)
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDTIMEO, timeout_pack)
+        # Ensure packets are sent immediately instead of waiting for larger batches to be created
         self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.sock.connect((HOST, self.tmi_port))
         self.registered = True
         print("Connected")
-
 
     # Launch program and return pids
     def launch_game(self):
@@ -220,7 +224,7 @@ class GameManager:
         self.ensure_game_launched()
         if time.perf_counter() - self.last_game_reboot > config_copy.game_reboot_interval: # stale instance of game
             self.close_game()
-            self.iface = None
+            self.sock = None
             self.launch_game()
 
         end_race_stats = {
@@ -251,7 +255,7 @@ class GameManager:
 
         last_progress_improvement_ms = 0
 
-        if (self.iface is None) or (not self.iface.registered): # Game was not connected to the program
+        if (self.sock is None) or (not self.registered): # Game was not connected to the program
             assert self.msgtype_response_to_wakeup_TMI is None
             print("Initialize connection to TMInterface ")
             # self.iface = TMInterface(self.tmi_port) # reset the interface
@@ -281,6 +285,7 @@ class GameManager:
         current_zone_idx = config_copy.n_zone_centers_extrapolate_before_start_of_map
 
         # Insert values for the start of a race
+        computed_action = None
         give_up_signal_has_been_sent = False
         this_rollout_has_seen_t_negative = False
         this_rollout_is_finished = False
@@ -309,17 +314,39 @@ class GameManager:
             4. Send inputs received from exploration policy to the game
             5. update the network
             """
-            if sim_state is None:
+            if self.latest_map_path_requested != savestate_path:
                 # We have to load the savestate we want
-                
-                sim_state = config_copy.track_start_state_path
+                if computed_action != None:
+                    self.sock.sendall(pickle.dumps([False, False, computed_action, savestate_path]))
+                else:
+                    self.sock.sendall(pickle.dumps([False, False, computed_action, savestate_path]))
+                self.latest_map_path_requested = savestate_path # this seems backwards... TODO
+                continue
+
+            if computed_action != None:
+                self.sock.sendall(pickle.dumps([True, True, computed_action, None]))
+            else:
+                self.sock.sendall(pickle.dumps([True, True, None, None]))
+            # The following line brought to you by literal hours of trying to figure things out only to realize I just needed two functions that I could've just copied from the original code
+            frame_data = np.frombuffer(self.sock.recv(FRAME_WIDTH * FRAME_HEIGHT * 3, socket.MSG_WAITALL), dtype = np.uint8).reshape((FRAME_HEIGHT, FRAME_WIDTH, 3))
+            # https://stackoverflow.com/questions/48121916/numpy-resize-rescale-image
+            resized_frame = frame_data[::6,::6]
+            """if frame_counter % 240 == 0:
+                cv2.imshow("Greyscale", cv2.cvtColor(resized_frame, cv2.COLOR_BGRA2GRAY))
+                cv2.waitKey(0)""" # Image is collected properly, next step is to save to file for display.
+            resized_frame = np.expand_dims(cv2.cvtColor(resized_frame, cv2.COLOR_BGRA2GRAY), 0) # took me like 80 minutes to get to the solution that was already present in the original code
+            # frame is a numpy array of shape (1, H, W) and dtype np.uint8
+
+            rollout_results["frames"].append(resized_frame)
+            game_data = pickle.loads(self.sock.recv(8192))
+
 
 
             if compute_action_asap_floats:
                 pc2 = time.perf_counter_ns()
 
-                # Overwrite extraneous previous actions with a base action of holding forward?
                 previous_actions = [
+                    # Get inputs from k for every k that we have not processed yet
                     config_copy.inputs[rollout_results["actions"][k] if k >= 0 else config_copy.action_forward_idx]
                     for k in range(
                         len(rollout_results["actions"]) - config_copy.n_prev_actions_in_inputs, len(rollout_results["actions"])
@@ -334,8 +361,28 @@ class GameManager:
                         [
                             previous_action[input_key]
                             for previous_action in previous_actions
-                            for input_key in ["accelerate", "brake", "left", "right"]
-                        ]
+                            for input_key in [
+                                "A", 
+                                "B", 
+                                "X", 
+                                "Y", 
+                                "Z", 
+                                "Start", 
+                                "Up", 
+                                "Down", 
+                                "Left", 
+                                "Right", 
+                                "L", 
+                                "R", 
+                                "StickX", 
+                                "StickY", 
+                                "CStickX", 
+                                "CStickY", 
+                                "TriggerLeft", 
+                                "TriggerRight"
+                            ]
+                        ],
+                        game_data
                     )
                 ).astype(np.float32)
 
@@ -354,9 +401,20 @@ class GameManager:
                 action_was_greedy,
                 q_value,
                 q_values,
-            ) = exploration_policy(rollout_results["frames"][-1], floats)
+            ) = exploration_policy(rollout_results["frames"][-1], floats) # TODO: consider replacing list index with available variable resized_frame
 
-            desired_inputs = {"A": True}  # actually process image data and determine next input
+            self.desired_inputs = config_copy.inputs[action_idx]  # determine next input
+            rollout_results["meters_advanced_along_centerline"].append(game_data[2]["race_completion_max"] - 0.998) # Negate starting lap completion percentage
+            rollout_results["input_w"].append(config_copy.inputs[action_idx]["A"])
+            rollout_results["actions"].append(action_idx)
+            rollout_results["action_was_greedy"].append(action_was_greedy)
+            rollout_results["q_values"].append(q_values)
+            rollout_results["state_float"].append(floats)
+
+            n_th_action_we_compute += 1
+
+            if _time % (10 * self.run_steps_per_action * config_copy.update_inference_network_every_n_actions) == 0:
+                update_network()
 
             if not self.timeout_has_been_set:
                 # reset the ai for doing bad things for too long?

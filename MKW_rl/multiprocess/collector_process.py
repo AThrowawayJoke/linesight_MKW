@@ -21,21 +21,23 @@ def collector_process_fn(
     uncompiled_shared_network,
     shared_network_lock,
     game_spawning_lock,
-    shared_steps: mp.Value,
+    shared_steps: mp.Value, # type: ignore # because it's fine at runtime so i wish to be rid of the warning
     base_dir: Path,
     save_dir: Path,
     tmi_port: int,
+    process_number: int,
 ):
     from MKW_rl.map_loader import analyze_map_cycle, load_next_map_zone_centers
-    from MKW_rl.MKW_interaction import game_instance_manager
+    from MKW_rl.MKW_interaction import game_manager_simple
 
-    tmi = game_instance_manager.GameInstanceManager(
+    mkw = game_manager_simple.GameManager(
         game_spawning_lock=game_spawning_lock,
         running_speed=config_copy.running_speed,
         run_steps_per_action=config_copy.tm_engine_step_per_action,
-        max_overall_duration_ms=config_copy.cutoff_rollout_if_race_not_finished_within_duration_ms,
-        max_minirace_duration_ms=config_copy.cutoff_rollout_if_no_vcp_passed_within_duration_ms,
+        max_overall_duration_f=config_copy.cutoff_rollout_if_race_not_finished_within_duration_f,
+        max_minirace_duration_f=config_copy.cutoff_rollout_if_no_vcp_passed_within_duration_f,
         tmi_port=tmi_port,
+        process_number=process_number,
     )
 
     inference_network, uncompiled_inference_network = iqn.make_untrained_iqn_network(config_copy.use_jit, is_inference=True)
@@ -76,7 +78,7 @@ def collector_process_fn(
     for loop_number in count(1):
         importlib.reload(config_copy)
 
-        tmi.max_minirace_duration_ms = config_copy.cutoff_rollout_if_no_vcp_passed_within_duration_ms
+        mkw.max_minirace_duration_f = config_copy.cutoff_rollout_if_no_vcp_passed_within_duration_f
 
         # ===============================================
         #   DID THE CYCLE CHANGE ?
@@ -114,10 +116,9 @@ def collector_process_fn(
         update_network()
 
         rollout_start_time = time.perf_counter()
-        rollout_results, end_race_stats = tmi.rollout(
+        rollout_results, end_race_stats = mkw.rollout(
             exploration_policy=inferer.get_exploration_action,
-            map_path=map_path,
-            zone_centers=zone_centers,
+            savestate_path=map_path,
             update_network=update_network,
         )
         rollout_end_time = time.perf_counter()
@@ -126,7 +127,7 @@ def collector_process_fn(
         time_since_last_queue_push = time.perf_counter()
         print("", flush=True)
 
-        if not tmi.last_rollout_crashed:
+        if not mkw.last_rollout_crashed:
             rollout_queue.put(
                 (
                     rollout_results,

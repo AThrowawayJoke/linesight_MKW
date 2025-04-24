@@ -1,3 +1,4 @@
+from multiprocessing import process
 from config_files import config_copy, user_config
 
 import math
@@ -21,7 +22,7 @@ import win32gui
 import win32process
 
 HOST = "127.0.0.1"
-FRAME_WIDTH = 834
+FRAME_WIDTH = 611
 FRAME_HEIGHT = 456
 
 class GameManager:
@@ -30,9 +31,10 @@ class GameManager:
         game_spawning_lock,
         running_speed=1,
         run_steps_per_action=10,
-        max_overall_duration_ms=2000,
-        max_minirace_duration_ms=2000,
+        max_overall_duration_f=2000,
+        max_minirace_duration_f=2000,
         tmi_port=None,
+        process_number=None
     ):
         # Create TMInterface we will be using to interact with the game client
         self.iface = None
@@ -40,8 +42,8 @@ class GameManager:
         self.latest_tm_engine_speed_requested = 1
         self.running_speed = running_speed
         self.run_steps_per_action = run_steps_per_action
-        self.max_overall_duration_ms = max_overall_duration_ms
-        self.max_minirace_duration_ms = max_minirace_duration_ms
+        self.max_overall_duration_f = max_overall_duration_f
+        self.max_minirace_duration_f = max_minirace_duration_f
         self.timeout_has_been_set = False
         self.msgtype_response_to_wakeup_TMI = None
         self.latest_savestate_path_requested = -2
@@ -54,6 +56,7 @@ class GameManager:
         self.start_states = {} # oh hey I might want to use this for starting later on in the track
         self.game_spawning_lock = game_spawning_lock
         self.game_activated = False
+        self.process_number = process_number
     
     def get_window_id(self):
         assert self.dolphin_process_id is not None
@@ -78,8 +81,7 @@ class GameManager:
                 # else:
                 #     raise Exception("Could not find TmForever window id.")
 
-    def register(self):
-        timeout = None
+    def register(self, timeout=None):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # signal.signal(signal.SIGINT, self.signal_handler) # Handle close game signal
         # https://stackoverflow.com/questions/45864828/msg-waitall-combined-with-so-rcvtimeo
@@ -115,15 +117,21 @@ class GameManager:
             self.tm_process_id = list(tmi_pid_candidates)[0]"""
             pass
         else:
-            # See Dolphin Command Line Usage for more information (https://github.com/dolphin-emu/dolphin)
+            # print(user_config.base_tmi_port, " This is a test ", config_copy.trackmania_base_path) # Issue: user_config was not reflecting changes made. Solution: "pip uninstall linesight". A version of linesight in another location was taking priority
+            # See Dolphin Command Line Usage for more information (https://github.com/dolphin-emu/dolphin) (https://wiki.dolphin-emu.org/index.php?title=GameINI)
+            dolphin_process_number = ""
+            if self.process_number >= 1:
+                dolphin_process_number = self.process_number + 1
+            
+            # print("Dolphin process number assigned as:", dolphin_process_number, "Derived from received process number of", self.process_number)
             launch_string = (
                 'powershell -executionPolicy bypass -command "& {'
-                f" $process = start-process -FilePath '{user_config.windows_Dolphinexe_path}'" # Launch .exe file
+                f" $process = start-process -FilePath '{config_copy.dolphin_base_path}{dolphin_process_number}\\{config_copy.windows_dolphinexe_filename}'" # Launch .exe file
                 " -PassThru -ArgumentList " # Assign arguments for .exe
-                f'\'--video_backend="{user_config.video_backend}" --script game_instance_hook.py --no-python-subinterpreters --exec="{user_config.game_path}"\';'
+                f'\'--video_backend="{config_copy.video_backend}" --config=Dolphin.Core.EmulationSpeed={config_copy.game_speed} --script MKW_rl\\MKW_interaction\\game_instance_hook.py --no-python-subinterpreters --exec="{config_copy.game_path}"\';'
                 ' echo exit $process.id}"' # push process_id to stdout to read later
             )
-
+            # print(launch_string)
             
             self.dolphin_process_id = int(subprocess.check_output(launch_string).decode().split("\r\n")[1]) # locate the pid from the program
             # We do not need the parent of returned process id for this fork
@@ -253,11 +261,11 @@ class GameManager:
             "furthest_zone_idx": 0,
         }
 
-        last_progress_improvement_ms = 0
+        last_progress_improvement_f = 0
 
         if (self.sock is None) or (not self.registered): # Game was not connected to the program
             assert self.msgtype_response_to_wakeup_TMI is None
-            print("Initialize connection to TMInterface ")
+            print("Initialize connection to Dolphin from game_manager")
             # self.iface = TMInterface(self.tmi_port) # reset the interface
 
             connection_attempts_start_time = time.perf_counter()
@@ -269,7 +277,7 @@ class GameManager:
                 except ConnectionRefusedError as e:
                     current_time = time.perf_counter()
                     if current_time - last_connection_error_message_time > 1:
-                        print(f"Connection to TMInterface unsuccessful for {current_time - connection_attempts_start_time:.1f}s")
+                        print(f"Connection to Dolphin unsuccessful for {current_time - connection_attempts_start_time:.1f}s")
                         last_connection_error_message_time = current_time
         """else:
             assert self.msgtype_response_to_wakeup_TMI is not None or self.last_rollout_crashed # Game is running and connected
@@ -281,7 +289,7 @@ class GameManager:
 
         self.last_rollout_crashed = False
 
-        _time = -3000 # track how long this rollout has been going
+        frames_processed = 0 # track how long this rollout has been going
         current_zone_idx = config_copy.n_zone_centers_extrapolate_before_start_of_map
 
         # Insert values for the start of a race
@@ -303,7 +311,7 @@ class GameManager:
         distance_since_track_begin = 0.999 # Beginning lap completion percentage is usually about 0.999, depending on the track
         sim_state_car_gear_and_wheels = None
 
-        sim_state = None
+        game_data = None
 
         while not this_rollout_is_finished:
             """
@@ -316,19 +324,19 @@ class GameManager:
             """
             if self.latest_map_path_requested != savestate_path:
                 # We have to load the savestate we want
-                if computed_action != None:
-                    self.sock.sendall(pickle.dumps([False, False, computed_action, savestate_path]))
-                else:
-                    self.sock.sendall(pickle.dumps([False, False, computed_action, savestate_path]))
+                self.sock.sendall(pickle.dumps([False, False, computed_action, savestate_path]))
                 self.latest_map_path_requested = savestate_path # this seems backwards... TODO
                 continue
 
-            if computed_action != None:
-                self.sock.sendall(pickle.dumps([True, True, computed_action, None]))
-            else:
-                self.sock.sendall(pickle.dumps([True, True, None, None]))
+            if (frames_processed % self.run_steps_per_action != 0):
+                self.sock.sendall(pickle.dumps([False, False, computed_action, None]))
+                continue
+
+            self.sock.sendall(pickle.dumps([True, True, computed_action, None]))
+
             # The following line brought to you by literal hours of trying to figure things out only to realize I just needed two functions that I could've just copied from the original code
             frame_data = np.frombuffer(self.sock.recv(FRAME_WIDTH * FRAME_HEIGHT * 3, socket.MSG_WAITALL), dtype = np.uint8).reshape((FRAME_HEIGHT, FRAME_WIDTH, 3))
+            frames_processed += 1
             # https://stackoverflow.com/questions/48121916/numpy-resize-rescale-image
             resized_frame = frame_data[::6,::6]
             """if frame_counter % 240 == 0:
@@ -386,15 +394,14 @@ class GameManager:
                     )
                 ).astype(np.float32)
 
-            if _time > 0 and this_rollout_has_seen_t_negative:
-                if _time % 50 == 0:
+            if frames_processed > 0 and this_rollout_has_seen_t_negative:
+                if frames_processed % 50 == 0:
                     instrumentation__between_run_steps += time.perf_counter_ns() - pc # time the run step took
             pc = time.perf_counter_ns()
 
             # ============================
             # BEGIN ON RUN STEP
             # ============================
-
 
             (
                 action_idx,
@@ -413,16 +420,24 @@ class GameManager:
 
             n_th_action_we_compute += 1
 
-            if _time % (10 * self.run_steps_per_action * config_copy.update_inference_network_every_n_actions) == 0:
+            if frames_processed % (10 * self.run_steps_per_action * config_copy.update_inference_network_every_n_actions) == 0:
                 update_network()
 
             if not self.timeout_has_been_set:
                 # reset the ai for doing bad things for too long?
                 self.timeout_has_been_set = True
             
-            if _time == 0 and (savestate_path != self.latest_map_path_requested):
-                map_change_requested_time = _time
+            if frames_processed == 0 and (savestate_path != self.latest_map_path_requested):
+                map_change_requested_time = frames_processed
                 give_up_signal_has_been_sent = True
 
-            exploration_policy(rollout_results, end_race_stats)
+            if ((frames_processed > self.max_overall_duration_f or frames_processed > last_progress_improvement_f + self.max_minirace_duration_f) and not this_rollout_is_finished):
+                race_time = game_data[2]["race_completion_max"]
+                face_finished = False
+                end_race_stats["race_time_for_ratio"] = race_time
+                end_race_stats["race_time"] = config_copy.cutoff_rollout_if_race_not_finished_within_duration_f
+                
+                # Possibly rewind game state? Unnecessary until proven otherwise.
+                this_rollout_is_finished = True
+        return rollout_results, end_race_stats
 

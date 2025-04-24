@@ -40,11 +40,11 @@ n_zone_centers_extrapolate_after_end_of_map = 1000
 n_zone_centers_extrapolate_before_start_of_map = 20
 n_prev_actions_in_inputs = 5
 n_contact_material_physics_behavior_types = 4  # See contact_materials.py
-cutoff_rollout_if_race_not_finished_within_duration_ms = 300_000
-cutoff_rollout_if_no_vcp_passed_within_duration_ms = 2_000
+cutoff_rollout_if_race_not_finished_within_duration_f = 21_600 # 6 minutes at 60fps
+cutoff_rollout_if_no_vcp_passed_within_duration_f = 120 # 2 seconds at 60fps
 
-temporal_mini_race_duration_ms = 7000
-temporal_mini_race_duration_actions = temporal_mini_race_duration_ms // ms_per_action
+temporal_mini_race_duration_f = 420
+temporal_mini_race_duration_actions = temporal_mini_race_duration_f // ms_per_action
 oversample_long_term_steps = 40
 oversample_maximum_term_steps = 5
 min_horizon_to_update_priority_actions = temporal_mini_race_duration_actions - 40
@@ -165,9 +165,11 @@ max_rollout_queue_size = 1
 
 use_jit = True
 
-# gpu_collectors_count is the number of Trackmania instances that will be launched in parallel.
+# gpu_collectors_count is the number of Dolphin instances that will be launched in parallel.
 # It is recommended that users adjust this number depending on the performance of their machine.
 # We recommend trying different values and finding the one that maximises the number of batches done per unit of time.
+# Note that each additional instance requires a separate folder containing a full Dolphin installation, and should be named sequentially.
+# For instance, if the original install is called 'dolphin_folder', installations 2 and 3 should be named 'dolphin_folder2' and 'dolphin_folder3'.
 gpu_collectors_count = 2
 
 send_shared_network_every_n_batches = 10

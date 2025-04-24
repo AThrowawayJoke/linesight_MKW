@@ -1,5 +1,6 @@
 from dolphin import event, gui, controller, savestate # type: ignore
-from game_data_interface import Game_Data_Interface
+# Note that the program runs from the main linesight folder
+from MKW_rl.MKW_interaction.game_data_interface import Game_Data_Interface
 import time
 import os
 import sys
@@ -55,16 +56,13 @@ class GameInstanceHook():
 
             # width * height * 4, socket.MSG_WAITALL # server recv to receive frame data because it's big
 
-            # The following line brought to you by literal hours of trying to figure things out only to realize I just needed two functions that I could've just copied from the original code
+            """# The following line brought to you by literal hours of trying to figure things out only to realize I just needed two functions that I could've just copied from the original code
             processed_frame = numpy.frombuffer(self.current_unprocessed_frame[2], dtype = numpy.uint8).reshape((self.current_unprocessed_frame[0], self.current_unprocessed_frame[1], 3))
             # https://stackoverflow.com/questions/48121916/numpy-resize-rescale-image
             resized_frame = processed_frame[::6,::6]
-            """if frame_counter % 240 == 0:
-                cv2.imshow("Greyscale", cv2.cvtColor(resized_frame, cv2.COLOR_BGRA2GRAY))
-                cv2.waitKey(0)""" # Image is collected properly, next step is to save to file for display.
             resized_frame = numpy.expand_dims(cv2.cvtColor(resized_frame, cv2.COLOR_BGRA2GRAY), 0) # took me like 80 minutes to get to the solution that was already present in the original code
             # frame is a numpy array of shape (1, H, W) and dtype np.uint8
-            print(processed_frame.shape, ":", resized_frame.shape)
+            print(processed_frame.shape, ":", resized_frame.shape)"""
         
         if game_data_request:
             kart_pos_rot = self.game_data_interface.get_kart_position_and_rotation()

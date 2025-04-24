@@ -1,6 +1,30 @@
-from dolphin import controller # type: ignore
+from typing import TypedDict
 
-from mkw_scripts.Modules.mkw_classes import player_stats
+class GCInputs(TypedDict, total=False):
+    """
+    Dictionary describing the state of a GameCube 
+    Boolean keys (buttons): True means pressed, False means released.
+    Float keys for triggers: 0 means fully released, 1 means fully pressed.
+    Float keys for sticks: 0 means neutral, ranges from -1 to 1.
+    """
+    A: bool
+    B: bool
+    X: bool
+    Y: bool
+    Z: bool
+    Start: bool
+    Up: bool
+    Down: bool
+    Left: bool
+    Right: bool
+    L: bool
+    R: bool
+    StickX: float
+    StickY: float
+    CStickX: float
+    CStickY: float
+    TriggerLeft: float
+    TriggerRight: float
 
 """
 When creating a list of inputs, several considerations must be made to help reduce the amount of options available to the ai.
@@ -58,95 +82,95 @@ Stick value conversion for GCInputs:
 """
 
 defaultInputState = {
-    controller.GCInputs.A: False,
-    controller.GCInputs.B: False,
-    controller.GCInputs.X: False,
-    controller.GCInputs.Y: False,
-    controller.GCInputs.Z: False,
-    controller.GCInputs.Start: False,
-    controller.GCInputs.Up: False,
-    controller.GCInputs.Down: False,
-    controller.GCInputs.Left: False,
-    controller.GCInputs.Right: False,
-    controller.GCInputs.L: False,
-    controller.GCInputs.R: False,
-    controller.GCInputs.StickX: 113,
-    controller.GCInputs.StickY: 113,
-    controller.GCInputs.CStickX: 0,
-    controller.GCInputs.CStickY: 0,
-    controller.GCInputs.TriggerLeft: 0,
-    controller.GCInputs.TriggerRight: 0
+    GCInputs["A"]: False,
+    GCInputs["B"]: False,
+    GCInputs["X"]: False,
+    GCInputs["Y"]: False,
+    GCInputs["Z"]: False,
+    GCInputs["Start"]: False,
+    GCInputs["Up"]: False,
+    GCInputs["Down"]: False,
+    GCInputs["Left"]: False,
+    GCInputs["Right"]: False,
+    GCInputs["L"]: False,
+    GCInputs["R"]: False,
+    GCInputs["StickX"]: 113,
+    GCInputs["StickY"]: 113,
+    GCInputs["CStickX"]: 0,
+    GCInputs["CStickY"]: 0,
+    GCInputs["TriggerLeft"]: 0,
+    GCInputs["TriggerRight"]: 0
 }
 
 # Adjust for individual tracks for item usage or other things
 inputs = [
     {  # 0 Forward
-        controller.GCInputs.A: True
+        GCInputs["A"]: True
     },
     {  # 1 Drift full left
-        controller.GCInputs.A: True,
-        controller.GCInputs.StickX: 0,
-        controller.GCInputs.TriggerRight: 1,
+        GCInputs["A"]: True,
+        GCInputs["StickX"]: 0,
+        GCInputs["TriggerRight"]: 1,
     },
     {  # 2 Drift full right
-        controller.GCInputs.StickX: 255,
-        controller.GCInputs.A: True,
-        controller.GCInputs.TriggerRight: 1,
+        GCInputs["StickX"]: 255,
+        GCInputs["A"]: True,
+        GCInputs["TriggerRight"]: 1,
     },
     {  # 3 Drift slight left
-        controller.GCInputs.A: True,
-        controller.GCInputs.StickX: 90,
-        controller.GCInputs.TriggerRight: 1,
+        GCInputs["A"]: True,
+        GCInputs["StickX"]: 90,
+        GCInputs["TriggerRight"]: 1,
     },
     {  # 4 Drift slight right
-        controller.GCInputs.A: True,
-        controller.GCInputs.StickX: 170,
-        controller.GCInputs.TriggerRight: 1,
+        GCInputs["A"]: True,
+        GCInputs["StickX"]: 170,
+        GCInputs["TriggerRight"]: 1,
     },
     {  # 5 Drift straight
-        controller.GCInputs.A: True,
-        controller.GCInputs.TriggerRight: 1,
+        GCInputs["A"]: True,
+        GCInputs["TriggerRight"]: 1,
     },
     {  # 6 Drift full right item # TODO: Adjust for individual tracks based on item usage
-        controller.GCInputs.StickX: 255,
-        controller.GCInputs.A: True,
-        controller.GCInputs.TriggerRight: 1,
-        controller.GCInputs.TriggerLeft: 1,
+        GCInputs["StickX"]: 255,
+        GCInputs["A"]: True,
+        GCInputs["TriggerRight"]: 1,
+        GCInputs["TriggerLeft"]: 1,
     },
     {  # 7 Full left # Note that #7 and #8 may not be necessary for all tracks, but are useful for alignment in wheelies.
-        controller.GCInputs.StickX: 0,
-        controller.GCInputs.A: True,
+        GCInputs["StickX"]: 0,
+        GCInputs["A"]: True,
     },
     {  # 8 Full right
-        controller.GCInputs.StickX: 255,
-        controller.GCInputs.A: True,
+        GCInputs["StickX"]: 255,
+        GCInputs["A"]: True,
     },
     {  # 9 Trick straight
-        controller.GCInputs.Up: True,
-        controller.GCInputs.A: True,
+        GCInputs["Up"]: True,
+        GCInputs["A"]: True,
     },
     {  # 10 Trick full right
-        controller.GCInputs.Up: True,
-        controller.GCInputs.A: True,
-        controller.GCInputs.StickX: 255,
+        GCInputs["Up"]: True,
+        GCInputs["A"]: True,
+        GCInputs["StickX"]: 255,
     },
     {  # 11 Trick full left
-        controller.GCInputs.StickX: 0,
-        controller.GCInputs.Up: True,
-        controller.GCInputs.A: True,
+        GCInputs["StickX"]: 0,
+        GCInputs["Up"]: True,
+        GCInputs["A"]: True,
     },
     {  # 12 No Accel (Start boost) # Note that stick is in default position
-        controller.GCInputs.A: False,
+        GCInputs["A"]: False,
     },
     {  # 13 No Accel right (Start maneuvering)
-        controller.GCInputs.StickX: 255,
-        controller.GCInputs.A: False,
-        controller.GCInputs.TriggerRight: 1,
+        GCInputs["StickX"]: 255,
+        GCInputs["A"]: False,
+        GCInputs["TriggerRight"]: 1,
     },
     {  # 14 No Accel left (Start maneuvering)
-        controller.GCInputs.StickX: 0,
-        controller.GCInputs.A: False,
-        controller.GCInputs.TriggerRight: 1,
+        GCInputs["StickX"]: 0,
+        GCInputs["A"]: False,
+        GCInputs["TriggerRight"]: 1,
     },
 ]
 

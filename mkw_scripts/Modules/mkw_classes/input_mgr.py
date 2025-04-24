@@ -1,5 +1,5 @@
-from dolphin import memory
-import mkw_config
+from dolphin import memory # type: ignore
+from mkw_scripts.Modules import mkw_config
 
 from . import RegionError
 

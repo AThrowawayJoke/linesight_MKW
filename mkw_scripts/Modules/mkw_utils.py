@@ -1,8 +1,8 @@
-from dolphin import memory
-import mkw_config
+from dolphin import memory #type: ignore
+from mkw_scripts.Modules import mkw_config
 
-from .mkw_classes import mat34, quatf, vec3, ExactTimer
-from .mkw_classes import VehicleDynamics, VehiclePhysics, RaceManagerPlayer
+from mkw_scripts.Modules.mkw_classes import mat34, quatf, vec3, ExactTimer
+from mkw_scripts.Modules.mkw_classes import VehicleDynamics, VehiclePhysics, RaceManagerPlayer
 
 # These are helper functions that don't quite fit in common.py
 # This file also contains getter functions for a few global variables.

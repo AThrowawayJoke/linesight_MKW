@@ -1,4 +1,4 @@
-from dolphin import gui
+from dolphin import gui # type: ignore
 
 
 def create_unpressed_button(center: tuple, radius: int, color: int):

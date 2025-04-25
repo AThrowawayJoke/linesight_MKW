@@ -45,7 +45,7 @@ windows_dolphinexe_filename = "Dolphin.exe"
 video_backend = "OGL"
 
 # Dolphin emulation speed. Usually set to unlimited (0.0), but can be set to 0.5 for 50% or 1.0 for 100% and so forth.
-game_speed = "0.0"
+game_speed = "2.0"
 
 """
 This simplistic method of training on one track at a time will remain until I reimplement the map switching logic that config.py is designed to handle

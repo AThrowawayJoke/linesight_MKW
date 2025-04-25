@@ -15,9 +15,30 @@ from mkw_scripts.Modules.mkw_classes import KartState, KartCollide, KartInput, R
 class Game_Data_Interface():
 	def __init__(self):
 		"""
-		All class objects can be initiated upon save state loading
+		All class objects can be initiated upon save state loading, when initialize_race_objects should be called
 		All function calls return the current value, not the location in memory.
 		"""
+		self.race_mgr_player: RaceManagerPlayer
+		self.race_scenario: RaceConfigScenario
+		self.race_settings: RaceConfigSettings
+
+		self.kart_object: KartObject
+		self.kart_state: KartState
+		self.kart_move: KartMove
+		self.kart_body: KartBody
+		self.kart_boost: KartBoost
+		self.kart_collide:KartCollide
+		self.kart_jump: KartJump
+
+		self.vehicle_dynamics: VehicleDynamics
+		self.vehicle_physics: VehiclePhysics
+
+		"""if self.kart_move.is_bike:
+			text += f"Wheelie Length: {self.kart_move.wheelie_frames()}\n"
+			text += f"Wheelie CD: {self.kart_move.wheelie_cooldown()} | "
+		"""
+
+	def initialize_race_objects(self):
 		self.race_mgr_player = RaceManagerPlayer()
 		self.race_scenario = RaceConfigScenario(addr=RaceConfig.race_scenario())
 		self.race_settings = RaceConfigSettings(self.race_scenario.settings())
@@ -32,10 +53,6 @@ class Game_Data_Interface():
 
 		self.vehicle_dynamics = VehicleDynamics(addr=self.kart_body.vehicle_dynamics())
 		self.vehicle_physics = VehiclePhysics(addr=self.vehicle_dynamics.vehicle_physics())
-
-		if self.kart_move.is_bike:
-			text += f"Wheelie Length: {self.kart_move.wheelie_frames()}\n"
-			text += f"Wheelie CD: {self.kart_move.wheelie_cooldown()} | "
 
 	def get_start_boost_charge(self):
 		return self.kart_state.start_boost_charge()

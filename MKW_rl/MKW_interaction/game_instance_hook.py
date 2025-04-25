@@ -6,15 +6,18 @@ import os
 import sys
 sys.path.append(os.path.expanduser("~") + "\\AppData\\Local\\programs\\python\\python312\\lib\\site-packages")
 
+import psutil
+from typing import List
 import numpy
 import cv2
 import socket
 import pickle
+from config_files import config_copy
 
 HOST = "127.0.0.1"
 
 class GameInstanceHook():
-    def __init__(self, port=65432):
+    def __init__(self, port=8478):
         self.desired_inputs = None
         self.last_desired_inputs = {}
         self.current_unprocessed_frame = None
@@ -25,6 +28,8 @@ class GameInstanceHook():
         self.conn = None
         self.game_data_interface = Game_Data_Interface()
         self.port = port
+        self.load_state_desired = False
+        self.desired_savestate = None
 
     def framedrawn_handler(self, width, height, data):
         # Wait for data necessary to determine what we want to do
@@ -43,8 +48,9 @@ class GameInstanceHook():
             self.desired_inputs = new_inputs
 
         if load_state_request is not None:
-            print("Attempting to load new savestate with file location:", socket_data[3])
-            savestate.load_from_file(socket_data[3])
+            print("Got a request for savestate load:", socket_data[3])
+            self.load_state_desired = True
+            self.desired_savestate = socket_data[3]
             if frame_data_request:
                 print("ERROR: Savestate file received but got unactionable frame data request")
             if game_data_request:
@@ -64,13 +70,15 @@ class GameInstanceHook():
             # frame is a numpy array of shape (1, H, W) and dtype np.uint8
             print(processed_frame.shape, ":", resized_frame.shape)"""
         
-        if game_data_request:
+        if game_data_request and self.desired_savestate is not None:
             kart_pos_rot = self.game_data_interface.get_kart_position_and_rotation()
             kart_velocity = self.game_data_interface.get_kart_velocities() # Returns dicti of 4 vectors, "external_velocity", "internal_velocity", "moving_road_velocity", and "moving_water_velocity"
             checkpoint_data = self.game_data_interface.get_checkpoint_data()
             driving_direction = self.game_data_interface.get_driving_direction() # likely not useful
             item_count = self.game_data_interface.get_item_count()
             self.conn.sendall(pickle.dumps([kart_pos_rot, kart_velocity, checkpoint_data, driving_direction, item_count]))
+        elif game_data_request:
+            print("ERROR: game_data_request was sent before race state was loaded")
         # send the image data here, so we can set desired_inputs before we exit the function
             
     def frameadvance_handler(self):
@@ -78,11 +86,16 @@ class GameInstanceHook():
         # draw on screen
         gui.draw_text((10, 10), self.red, f"Frame: {self.frame_counter}")
 
+        if self.load_state_desired:
+            self.load_state_desired = False
+            savestate.load_from_file(self.desired_savestate)
+            print("Loaded new savestate:", self.desired_savestate)
+
         if self.desired_inputs and self.desired_inputs != self.last_desired_inputs:
             controller.set_gc_buttons(0, self.desired_inputs)
             self.last_desired_inputs = self.desired_inputs
 
-    def register(self, port):
+    def register(self):
         print("Initialize connection to Dolphin ")
         # self.iface = TMInterface(self.tmi_port) # reset the interface
 
@@ -91,15 +104,27 @@ class GameInstanceHook():
 
         self.listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.listener.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        self.listener.bind(HOST, self.port)
+        self.listener.bind((HOST, self.port))
         print("Game hook socket binded on port", self.port)
 
         self.listener.listen(1)
         self.conn, addr = self.listener.accept()
         print("Connected. Address:", addr)
 
+# Possibly send a packet through a known channel, which then establishes a separate connection?
+# Or start at a known port and iterate until you find a clear one
+def is_dolphin_process(process: psutil.Process) -> bool:
+    try:
+        return "Dolphin" in process.name()
+    except psutil.NoSuchProcess:
+        return False
 
-mymanager = GameInstanceHook()
+def get_dolphin_pids() -> List[int]:
+    return [process.pid for process in psutil.process_iter() if is_dolphin_process(process)]
+
+# Use base tmi port, plus number of active dolphin instances (does not handle restarts correctly), minus 1 for this instance
+mymanager = GameInstanceHook(config_copy.base_tmi_port + len(get_dolphin_pids()) - 1)
+print("Working from port", mymanager.port)
 
 """
 Register the socket, ensure it is connected

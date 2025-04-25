@@ -92,9 +92,7 @@ def collector_process_fn(
         #   GET NEXT MAP FROM CYCLE
         # ===============================================
         next_map_tuple = next(map_cycle_iter)
-        if next_map_tuple[2] != zone_centers_filename:
-            zone_centers = load_next_map_zone_centers(next_map_tuple[2], base_dir)
-        map_name, map_path, zone_centers_filename, is_explo, fill_buffer = next_map_tuple
+        map_name, map_path, is_explo, fill_buffer = next_map_tuple
         map_status = "trained" if map_name in set_maps_trained else "blind"
 
         inferer.epsilon = utilities.from_exponential_schedule(config_copy.epsilon_schedule, shared_steps.value)

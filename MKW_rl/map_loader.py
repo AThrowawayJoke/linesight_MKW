@@ -181,6 +181,6 @@ def analyze_map_cycle(map_cycle):
     Given a map cycle, identify which maps are used for training and testing, and which maps are only used for testing.
     """
     set_all_maps = set(map(lambda x: x[0], (a for a in itertools.chain(*copy.deepcopy(config_copy.map_cycle)))))
-    set_maps_trained = set(map(lambda x: x[0], filter(lambda x: x[4], (a for a in itertools.chain(*copy.deepcopy(map_cycle))))))
+    set_maps_trained = set(map(lambda x: x[0], filter(lambda x: x[3], (a for a in itertools.chain(*copy.deepcopy(map_cycle))))))
     set_maps_blind = set_all_maps - set_maps_trained
     return set_maps_trained, set_maps_blind

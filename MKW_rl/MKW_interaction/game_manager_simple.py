@@ -254,7 +254,7 @@ class GameManager:
             "frames": [],
             "input_w": [], # Whether or not w is pressed
             "actions": [], # list of actions
-            "action_was_greedy": [], # whether action is greedy as defined by the epxloration policy
+            "action_was_greedy": [], # whether action is greedy as defined by the exploration policy
             "q_values": [],
             "race_completion": [],
             "state_float": [], # specifics about game data we want ai to know
@@ -330,6 +330,7 @@ class GameManager:
 
             if (frames_processed % self.run_steps_per_action != 0):
                 self.sock.sendall(pickle.dumps([False, False, computed_action, None]))
+                compute_action_asap_floats = True
                 continue
 
             self.sock.sendall(pickle.dumps([True, True, computed_action, None]))
@@ -349,8 +350,8 @@ class GameManager:
             game_data = pickle.loads(self.sock.recv(8192))
 
 
-
             if compute_action_asap_floats:
+                compute_action_asap_floats = False
                 pc2 = time.perf_counter_ns()
 
                 previous_actions = [
@@ -411,6 +412,13 @@ class GameManager:
             ) = exploration_policy(rollout_results["frames"][-1], floats) # TODO: consider replacing list index with available variable resized_frame
 
             self.desired_inputs = config_copy.inputs[action_idx]  # determine next input
+
+            # Oh, the joy of not knowing what this is for but putting it in anyway
+            if n_th_action_we_compute == 0:
+                end_race_stats["value_starting_frame"] = q_value
+                for i, val in enumerate(np.nditer(q_values)):
+                    end_race_stats[f"q_value_{i}_starting_frame"] = val
+
             rollout_results["meters_advanced_along_centerline"].append(game_data[2]["race_completion_max"] - 0.998) # Negate starting lap completion percentage
             rollout_results["input_w"].append(config_copy.inputs[action_idx]["A"])
             rollout_results["actions"].append(action_idx)
@@ -420,7 +428,8 @@ class GameManager:
 
             n_th_action_we_compute += 1
 
-            if frames_processed % (10 * self.run_steps_per_action * config_copy.update_inference_network_every_n_actions) == 0:
+            if frames_processed % (self.run_steps_per_action * config_copy.update_inference_network_every_n_actions) == 0:
+                print("Updating network")
                 update_network()
 
             if not self.timeout_has_been_set:
@@ -436,6 +445,7 @@ class GameManager:
                 face_finished = False
                 end_race_stats["race_time_for_ratio"] = race_time
                 end_race_stats["race_time"] = config_copy.cutoff_rollout_if_race_not_finished_within_duration_f
+                rollout_results["race_time"] = race_time
                 
                 # Possibly rewind game state? Unnecessary until proven otherwise.
                 this_rollout_is_finished = True

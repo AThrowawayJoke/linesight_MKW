@@ -1,4 +1,4 @@
-from dolphin import memory
+from dolphin import memory # type: ignore
 
 from . import mat34, vec3, quatf, VehicleDynamics
 

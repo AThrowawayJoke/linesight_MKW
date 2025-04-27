@@ -1,6 +1,6 @@
 #TODO
 
-from dolphin import memory
+from dolphin import memory # type: ignore
 from enum import Enum
 
 from . import KartSettings, KartObject, vec3, SpecialFloor

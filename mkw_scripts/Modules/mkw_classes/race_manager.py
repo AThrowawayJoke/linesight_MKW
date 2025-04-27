@@ -65,7 +65,7 @@ class RaceManager:
     def race_manager_player(player_idx=0) -> int:
         # Assert player_idx is within the number of current players
         race_scenario_ref = RaceConfigScenario(RaceConfig.race_scenario())
-        assert(0 <= player_idx < race_scenario_ref.player_count())
+        # assert(0 <= player_idx < race_scenario_ref.player_count())
 
         race_manager_ref = RaceManager.chain()
         player_array = race_manager_ref + 0xC

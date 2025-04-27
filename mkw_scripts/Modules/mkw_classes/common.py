@@ -11,6 +11,9 @@ class RegionError(Exception):
                                  f"got {mkw_config.game_id_string}"):
         super().__init__(message)
 
+def read_bytes(ptr, num_bytes): # reimplementation of the read_bytes function present in PyCore
+    return bytearray([memory.read_u8(ptr + i) for i in range(num_bytes)])
+
 @dataclass
 class vec2:
     x: float = 0.0
@@ -24,7 +27,7 @@ class vec2:
 
     @staticmethod
     def read(ptr) -> "vec2":
-        bytes = memory.read_bytes(ptr, 0x8)
+        bytes = read_bytes(ptr, 0x8)
         return vec2(*struct.unpack('>' + 'f'*2, bytes))
 
 @dataclass
@@ -47,8 +50,11 @@ class vec3:
 
     @staticmethod
     def read(ptr) -> "vec3":
-        bytes = memory.read_bytes(ptr, 0xC)
+        bytes = read_bytes(ptr, 0xC)
         return vec3(*struct.unpack('>' + 'f'*3, bytes))
+    
+    def to_list(self):
+        return [self.x, self.y, self.z]
 
 @dataclass
 class mat34:
@@ -67,8 +73,11 @@ class mat34:
 
     @staticmethod
     def read(ptr) -> "mat34":
-        bytes = memory.read_bytes(ptr, 0x30)
+        bytes = read_bytes(ptr, 0x30)
         return mat34(*struct.unpack('>' + 'f'*12, bytes))
+    
+    def to_list(self):
+        return [self.e00, self.e01, self.e02, self.e03, self.e10, self.e11, self.e12, self.e13, self.e20, self.e21, self.e22, self.e23]
 
 @dataclass
 class quatf:
@@ -79,7 +88,7 @@ class quatf:
 
     @staticmethod
     def read(ptr) -> "quatf":
-        bytes = memory.read_bytes(ptr, 0x10)
+        bytes = read_bytes(ptr, 0x10)
         return quatf(*struct.unpack('>' + 'f'*4, bytes))
 
 @dataclass

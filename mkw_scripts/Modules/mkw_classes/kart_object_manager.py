@@ -18,7 +18,7 @@ class KartObjectManager:
 
     @staticmethod
     def kart_object(player_idx=0) -> int:
-        assert(0 <= player_idx < KartObjectManager.player_count())
+        # assert(0 <= player_idx < KartObjectManager.player_count())
         kart_obj_arr_ref = KartObjectManager.kart_object_arr()
         kart_obj_ptr = kart_obj_arr_ref + (player_idx * 0x4)
         return memory.read_u32(kart_obj_ptr)

@@ -3,9 +3,7 @@ from config_files import config_copy, user_config
 
 import math
 import os
-import socket
-import pickle
-import struct
+from multiprocessing.connection import Client
 import subprocess
 import time
 from typing import Callable, Dict, List
@@ -82,8 +80,9 @@ class GameManager:
                 #     raise Exception("Could not find TmForever window id.")
 
     def register(self, timeout=None):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # signal.signal(signal.SIGINT, self.signal_handler) # Handle close game signal
+        # https://stackoverflow.com/questions/6920858/interprocess-communication-in-python
+        self.sock = Client((HOST, self.tmi_port))
+        """# signal.signal(signal.SIGINT, self.signal_handler) # Handle close game signal
         # https://stackoverflow.com/questions/45864828/msg-waitall-combined-with-so-rcvtimeo
         # https://stackoverflow.com/questions/2719017/how-to-set-timeout-on-pythons-socket-recv-method
         if timeout is not None:
@@ -96,7 +95,7 @@ class GameManager:
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDTIMEO, timeout_pack)
         # Ensure packets are sent immediately instead of waiting for larger batches to be created
         self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        self.sock.connect((HOST, self.tmi_port))
+        self.sock.connect((HOST, self.tmi_port))"""
         self.registered = True
         print("Connected")
 
@@ -324,19 +323,20 @@ class GameManager:
             """
             if self.latest_map_path_requested != savestate_path:
                 # We have to load the savestate we want
-                self.sock.sendall(pickle.dumps([False, False, computed_action, savestate_path]))
+                self.sock.send([False, False, computed_action, savestate_path])
                 self.latest_map_path_requested = savestate_path # this seems backwards... TODO
                 continue
 
             if (frames_processed % self.run_steps_per_action != 0):
-                self.sock.sendall(pickle.dumps([False, False, computed_action, None]))
+                self.sock.send([False, False, computed_action, None])
                 compute_action_asap_floats = True
                 continue
 
-            self.sock.sendall(pickle.dumps([True, True, computed_action, None]))
+            self.sock.send([True, True, computed_action, None])
 
+            # print("Now waiting for frame data.")
             # The following line brought to you by literal hours of trying to figure things out only to realize I just needed two functions that I could've just copied from the original code
-            frame_data = np.frombuffer(self.sock.recv(FRAME_WIDTH * FRAME_HEIGHT * 3, socket.MSG_WAITALL), dtype = np.uint8).reshape((FRAME_HEIGHT, FRAME_WIDTH, 3))
+            frame_data = np.frombuffer(self.sock.recv_bytes(FRAME_WIDTH * FRAME_HEIGHT * 3), dtype = np.uint8).reshape((FRAME_HEIGHT, FRAME_WIDTH, 3))
             frames_processed += 1
             # https://stackoverflow.com/questions/48121916/numpy-resize-rescale-image
             resized_frame = frame_data[::6,::6]
@@ -347,8 +347,9 @@ class GameManager:
             # frame is a numpy array of shape (1, H, W) and dtype np.uint8
 
             rollout_results["frames"].append(resized_frame)
-            game_data = pickle.loads(self.sock.recv(8192))
-
+            # print("got frame data. now waiting for game data")
+            game_data = self.sock.recv()
+            print("got game data.")
 
             if compute_action_asap_floats:
                 compute_action_asap_floats = False

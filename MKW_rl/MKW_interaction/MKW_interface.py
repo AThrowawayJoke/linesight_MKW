@@ -3,7 +3,7 @@ This file attempts to make interfacing with the game easier by containing the im
 within directly callable functions in leiu of the instance manager program handling the static objects
 """
 
-from mkw_scripts.Modules.mkw_classes.common import SurfaceProperties
+from mkw_scripts.Modules.mkw_classes.common import vec3
 
 import mkw_scripts.Modules.mkw_utils as mkw_utils
 from mkw_scripts.Modules.mkw_classes import RaceManager, RaceManagerPlayer, RaceState
@@ -12,7 +12,7 @@ from mkw_scripts.Modules.mkw_classes import KartObject, KartMove, KartSettings, 
 from mkw_scripts.Modules.mkw_classes import VehicleDynamics, VehiclePhysics, KartBoost, KartJump
 from mkw_scripts.Modules.mkw_classes import KartState, KartCollide, KartInput, RaceInputState
 
-class Game_Data_Interface():
+class MKW_Interface():
 	def __init__(self):
 		"""
 		All class objects can be initiated upon save state loading, when initialize_race_objects should be called
@@ -72,16 +72,17 @@ class Game_Data_Interface():
 	
 	def get_kart_position_and_rotation(self):
 		return {
-			"position": self.vehicle_physics.position(),
-			"rotation": self.kart_body.kart_part_rotation()
+			"position": self.vehicle_physics.position().to_list(),
+			"rotation": self.kart_body.kart_part_rotation().to_list(),
+			"angle": self.kart_body.angle()
 		}
 	
 	def get_kart_velocities(self):
 		return {
-			"external_velocity": self.vehicle_physics.external_velocity(),
-			"internal_velocity": self.vehicle_physics.internal_velocity(),
-			"moving_road_velocity": self.vehicle_physics.moving_road_velocity(),
-			"moving_water_velocity": self.vehicle_physics.moving_water_velocity()
+			"external_velocity": self.vehicle_physics.external_velocity().to_list(),
+			"internal_velocity": self.vehicle_physics.internal_velocity().to_list(),
+			"moving_road_velocity": self.vehicle_physics.moving_road_velocity().to_list(),
+			"moving_water_velocity": self.vehicle_physics.moving_water_velocity().to_list()
 		}
 
 	def get_surface_properties(self):
@@ -125,7 +126,7 @@ class Game_Data_Interface():
 		WAITING_FOR_BACKWARDS = 2
 		BACKWARDS = 3
 		"""
-		return self.kart_move.driving_direction() # 1 and 3 likely deserve negative rewards
+		return self.kart_move.driving_direction().value # 1 and 3 likely deserve negative rewards
 	
 	def get_wheelie_cooldown(self):
 		if self.kart_move.is_bike: # sanity check in case of dumb programmers (me)

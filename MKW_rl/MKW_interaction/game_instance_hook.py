@@ -1,6 +1,6 @@
 from dolphin import event, gui, controller, savestate # type: ignore
 # Note that the program runs from the main linesight folder
-from MKW_rl.MKW_interaction.game_data_interface import Game_Data_Interface
+from MKW_rl.MKW_interaction.MKW_interface import MKW_Interface
 import time
 import os
 import sys
@@ -10,8 +10,7 @@ import psutil
 from typing import List
 import numpy
 import cv2
-import socket
-import pickle
+from multiprocessing.connection import Listener
 from config_files import config_copy
 
 HOST = "127.0.0.1"
@@ -26,7 +25,8 @@ class GameInstanceHook():
         self.red = 0xffff0000
         self.listener = None
         self.conn = None
-        self.game_data_interface = Game_Data_Interface()
+        self.game_data_initiated = False
+        self.game_data_interface = MKW_Interface()
         self.port = port
         self.load_state_desired = False
         self.desired_savestate = None
@@ -35,9 +35,10 @@ class GameInstanceHook():
         # Wait for data necessary to determine what we want to do
         self.current_unprocessed_frame = (height, width, data)
 
+        # print("Now waiting for new request")
         # https://stackoverflow.com/questions/38412887/how-to-send-a-list-through-tcp-sockets-python
-        socket_data = pickle.loads(self.conn.recv(4096))
-        print("Received:", socket_data)
+        socket_data = self.conn.recv()
+        # print("Received:", socket_data)
 
         frame_data_request = socket_data[0]
         game_data_request = socket_data[1]
@@ -58,7 +59,7 @@ class GameInstanceHook():
             return
 
         if frame_data_request:
-            self.conn.sendall(self.current_unprocessed_frame) # unsure if i should pre-process frame or not...
+            self.conn.send_bytes(self.current_unprocessed_frame[2]) # unsure if i should pre-process frame or not...
 
             # width * height * 4, socket.MSG_WAITALL # server recv to receive frame data because it's big
 
@@ -71,12 +72,16 @@ class GameInstanceHook():
             print(processed_frame.shape, ":", resized_frame.shape)"""
         
         if game_data_request and self.desired_savestate is not None:
+            if not self.game_data_initiated:
+                self.game_data_interface.initialize_race_objects()
+                self.game_data_initiated = True
             kart_pos_rot = self.game_data_interface.get_kart_position_and_rotation()
             kart_velocity = self.game_data_interface.get_kart_velocities() # Returns dicti of 4 vectors, "external_velocity", "internal_velocity", "moving_road_velocity", and "moving_water_velocity"
             checkpoint_data = self.game_data_interface.get_checkpoint_data()
             driving_direction = self.game_data_interface.get_driving_direction() # likely not useful
             item_count = self.game_data_interface.get_item_count()
-            self.conn.sendall(pickle.dumps([kart_pos_rot, kart_velocity, checkpoint_data, driving_direction, item_count]))
+            print(kart_pos_rot, kart_velocity, checkpoint_data, driving_direction, item_count)
+            self.conn.send([kart_pos_rot, kart_velocity, checkpoint_data, driving_direction, item_count])
         elif game_data_request:
             print("ERROR: game_data_request was sent before race state was loaded")
         # send the image data here, so we can set desired_inputs before we exit the function
@@ -89,6 +94,7 @@ class GameInstanceHook():
         if self.load_state_desired:
             self.load_state_desired = False
             savestate.load_from_file(self.desired_savestate)
+            self.game_data_initiated = False
             print("Loaded new savestate:", self.desired_savestate)
 
         if self.desired_inputs and self.desired_inputs != self.last_desired_inputs:
@@ -102,14 +108,11 @@ class GameInstanceHook():
         connection_attempts_start_time = time.perf_counter()
         last_connection_error_message_time = time.perf_counter()
 
-        self.listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.listener.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        self.listener.bind((HOST, self.port))
-        print("Game hook socket binded on port", self.port)
+        self.listener = Listener((HOST, self.port))
+        print("Game hook socket listening on port", self.port)
 
-        self.listener.listen(1)
-        self.conn, addr = self.listener.accept()
-        print("Connected. Address:", addr)
+        self.conn = self.listener.accept()
+        print("Connected accepted from:", self.listener.last_accepted)
 
 # Possibly send a packet through a known channel, which then establishes a separate connection?
 # Or start at a known port and iterate until you find a clear one

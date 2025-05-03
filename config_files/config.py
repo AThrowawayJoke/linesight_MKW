@@ -25,13 +25,13 @@ from config_files.inputs_list import *
 from config_files.state_normalization import *
 from config_files.user_config import *
 
-W_downsized = 160
-H_downsized = 120
+W_downsized = 101
+H_downsized = 76
 
 run_name = "MARIO_KART_WII"
 running_speed = 80
 
-tm_engine_step_per_action = 5
+tm_engine_step_per_action = 4
 ms_per_tm_engine_step = 10
 ms_per_action = ms_per_tm_engine_step * tm_engine_step_per_action
 n_zone_centers_in_inputs = 40
@@ -84,7 +84,7 @@ n_steps = 3
 constant_reward_per_ms = -6 / 5000
 reward_per_m_advanced_along_centerline = 5 / 500
 
-float_input_dim = 27 + 3 * n_zone_centers_in_inputs + 4 * n_prev_actions_in_inputs + 4 * n_contact_material_physics_behavior_types + 1
+float_input_dim = 36 + 7 * n_prev_actions_in_inputs + 1
 float_hidden_dim = 256
 conv_head_output_dim = 5632
 dense_hidden_dimension = 1024

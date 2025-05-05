@@ -7,6 +7,10 @@ from multiprocessing.connection import Client
 import subprocess
 import time
 from typing import Callable, Dict, List
+import flatdict
+
+from MKW_rl.MKW_interaction.MKW_data_translate import *
+from config_files.inputs_list import GCInputs
 
 import cv2
 import numba
@@ -297,8 +301,8 @@ class GameManager:
         this_rollout_has_seen_t_negative = False
         this_rollout_is_finished = False
         n_th_action_we_compute = 0
-        compute_action_asap = False
-        compute_action_asap_floats = False
+        compute_action_asap = True
+        compute_action_asap_floats = True
         frame_expected = False
         map_change_requested_time = math.inf
 
@@ -347,9 +351,9 @@ class GameManager:
             # frame is a numpy array of shape (1, H, W) and dtype np.uint8
 
             rollout_results["frames"].append(resized_frame)
-            # print("got frame data. now waiting for game data")
             game_data = self.sock.recv()
-            print("got game data.")
+            network_inputs = Network_Inputs(game_data, rollout_results["actions"])
+            print("Game data converted to:", network_inputs.get_flattened_game_data())
 
             if compute_action_asap_floats:
                 compute_action_asap_floats = False
@@ -366,35 +370,17 @@ class GameManager:
 
                 # unfinished
                 floats = np.hstack(
-                    0,
-                    np.array(
-                        [
-                            previous_action[input_key]
-                            for previous_action in previous_actions
-                            for input_key in [
-                                "A", 
-                                "B", 
-                                "X", 
-                                "Y", 
-                                "Z", 
-                                "Start", 
-                                "Up", 
-                                "Down", 
-                                "Left", 
-                                "Right", 
-                                "L", 
-                                "R", 
-                                "StickX", 
-                                "StickY", 
-                                "CStickX", 
-                                "CStickY", 
-                                "TriggerLeft", 
-                                "TriggerRight"
-                            ]
-                        ],
-                        game_data
-                    )
-                ).astype(np.float32)
+                    (
+                        np.array(
+                            network_inputs.get_input_data()
+                        ),
+                        np.array(
+                            network_inputs.get_flattened_game_data()
+                        )
+                    ),
+                    dtype=np.float32
+                )
+                print("Floats generated:", len(floats))
 
             if frames_processed > 0 and this_rollout_has_seen_t_negative:
                 if frames_processed % 50 == 0:
@@ -404,7 +390,7 @@ class GameManager:
             # ============================
             # BEGIN ON RUN STEP
             # ============================
-
+            # print("game_manager rollout(): Shape of img:", rollout_results["frames"][-1].shape(), ": floats:", floats)
             (
                 action_idx,
                 action_was_greedy,
@@ -412,7 +398,7 @@ class GameManager:
                 q_values,
             ) = exploration_policy(rollout_results["frames"][-1], floats) # TODO: consider replacing list index with available variable resized_frame
 
-            self.desired_inputs = config_copy.inputs[action_idx]  # determine next input
+            computed_action = config_copy.inputs[action_idx]  # determine next input
 
             # Oh, the joy of not knowing what this is for but putting it in anyway
             if n_th_action_we_compute == 0:
@@ -420,8 +406,8 @@ class GameManager:
                 for i, val in enumerate(np.nditer(q_values)):
                     end_race_stats[f"q_value_{i}_starting_frame"] = val
 
-            rollout_results["meters_advanced_along_centerline"].append(game_data[2]["race_completion_max"] - 0.998) # Negate starting lap completion percentage
-            rollout_results["input_w"].append(config_copy.inputs[action_idx]["A"])
+            rollout_results["race_completion"].append(game_data["race_data"]["race_completion_max"])
+            rollout_results["input_w"].append(config_copy.inputs[action_idx][GCInputs["A"]])
             rollout_results["actions"].append(action_idx)
             rollout_results["action_was_greedy"].append(action_was_greedy)
             rollout_results["q_values"].append(q_values)
@@ -442,7 +428,8 @@ class GameManager:
                 give_up_signal_has_been_sent = True
 
             if ((frames_processed > self.max_overall_duration_f or frames_processed > last_progress_improvement_f + self.max_minirace_duration_f) and not this_rollout_is_finished):
-                race_time = game_data[2]["race_completion_max"]
+                print("This rollout has finished because you guys suck at your jobs")
+                race_time = frames_processed
                 face_finished = False
                 end_race_stats["race_time_for_ratio"] = race_time
                 end_race_stats["race_time"] = config_copy.cutoff_rollout_if_race_not_finished_within_duration_f

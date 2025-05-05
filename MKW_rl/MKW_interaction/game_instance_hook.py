@@ -13,6 +13,8 @@ import cv2
 from multiprocessing.connection import Listener
 from config_files import config_copy
 
+from MKW_rl.MKW_interaction.MKW_data_translate import *
+
 HOST = "127.0.0.1"
 
 class GameInstanceHook():
@@ -81,7 +83,12 @@ class GameInstanceHook():
             driving_direction = self.game_data_interface.get_driving_direction() # likely not useful
             item_count = self.game_data_interface.get_item_count()
             print(kart_pos_rot, kart_velocity, checkpoint_data, driving_direction, item_count)
-            self.conn.send([kart_pos_rot, kart_velocity, checkpoint_data, driving_direction, item_count])
+            game_data = self.game_data_interface.get_game_data_object()
+            for key in game_data["kart_data"].keys():
+                value = game_data["kart_data"][key]
+                if type(value) == vec3:
+                    game_data["kart_data"][key] = [value.x, value.y, value.z]
+            self.conn.send(game_data)
         elif game_data_request:
             print("ERROR: game_data_request was sent before race state was loaded")
         # send the image data here, so we can set desired_inputs before we exit the function

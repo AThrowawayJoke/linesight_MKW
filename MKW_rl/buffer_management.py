@@ -42,6 +42,9 @@ def fill_buffer_from_rollout_with_n_steps_rule(
     engineered_neoslide_reward: float,
     engineered_kamikaze_reward: float,
     engineered_close_to_vcp_reward: float,
+    engineered_mushroom_reward=0.0,
+    engineered_superhopping_reward=0.0,
+    engineered_supergrinding_reward=0.0,
 ):
     assert len(rollout_results["frames"]) == len(rollout_results["current_zone_idx"])
     n_frames = len(rollout_results["frames"])
@@ -64,7 +67,7 @@ def fill_buffer_from_rollout_with_n_steps_rule(
             else rollout_results["race_time"] - (n_frames - 2) * config_copy.ms_per_action
         )
         reward_into[i] += (
-            rollout_results["meters_advanced_along_centerline"][i] - rollout_results["meters_advanced_along_centerline"][i - 1]
+            rollout_results["race_completion"][i] - rollout_results["race_completion"][i - 1]
         ) * config_copy.reward_per_m_advanced_along_centerline
         if i < n_frames - 1:
             if config_copy.final_speed_reward_per_m_per_s != 0 and rollout_results["state_float"][i][58] > 0:

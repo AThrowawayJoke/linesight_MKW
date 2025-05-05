@@ -17,6 +17,7 @@ from torchrl.data import ReplayBuffer
 
 from config_files import config_copy
 from MKW_rl import utilities
+from MKW_rl.MKW_interaction import MKW_data_translate
 
 
 class IQN_Network(torch.nn.Module):
@@ -34,7 +35,9 @@ class IQN_Network(torch.nn.Module):
         super().__init__()
         self.iqn_embedding_dimension = iqn_embedding_dimension
         img_head_channels = [1, 16, 32, 64, 32]
+        # Use LeakyReLU as our weight adjustment method in the networks
         activation_function = torch.nn.LeakyReLU
+        # Create the network layers we will be using to process images
         self.img_head = torch.nn.Sequential(
             torch.nn.Conv2d(in_channels=img_head_channels[0], out_channels=img_head_channels[1], kernel_size=(4, 4), stride=2),
             activation_function(inplace=True),
@@ -46,25 +49,29 @@ class IQN_Network(torch.nn.Module):
             activation_function(inplace=True),
             torch.nn.Flatten(),
         )
+        # Create the network layers we will be using to process game data (Optimizing for this network is likely more ideal)
         self.float_feature_extractor = torch.nn.Sequential(
             torch.nn.Linear(float_inputs_dim, float_hidden_dim),
             activation_function(inplace=True),
             torch.nn.Linear(float_hidden_dim, float_hidden_dim),
             activation_function(inplace=True),
         )
-
+        # Dimensions of our network layers to connect the img and float layers
         dense_input_dimension = conv_head_output_dim + float_hidden_dim
 
+        # Network layer for the state-action pairs advantage function for dueling architecture
         self.A_head = torch.nn.Sequential(
             torch.nn.Linear(dense_input_dimension, dense_hidden_dimension // 2),
             activation_function(inplace=True),
             torch.nn.Linear(dense_hidden_dimension // 2, n_actions),
         )
+        # Network layer of the state values for dueling architecture
         self.V_head = torch.nn.Sequential(
             torch.nn.Linear(dense_input_dimension, dense_hidden_dimension // 2),
             activation_function(inplace=True),
             torch.nn.Linear(dense_hidden_dimension // 2, 1),
         )
+        # Top sneaky layer that I don't understand yet
         self.iqn_fc = torch.nn.Sequential(torch.nn.Linear(iqn_embedding_dimension, dense_input_dimension), torch.nn.LeakyReLU(inplace=True))
         self.initialize_weights()
 
@@ -120,6 +127,7 @@ class IQN_Network(torch.nn.Module):
         img_outputs = self.img_head(img)
         float_outputs = self.float_feature_extractor((float_inputs - self.float_inputs_mean) / self.float_inputs_std)
         concat = torch.cat((img_outputs, float_outputs), 1)  # (batch_size, dense_input_dimension)
+        # print("IQN Forward 1 :: Batch_size of", batch_size, " And img_outputs of", img_outputs.shape, "float length:", float_outputs.shape)
         if tau is None:
             tau = (
                 torch.arange(num_quantiles // 2, device="cuda", dtype=torch.float32).repeat_interleave(batch_size).unsqueeze(1)
@@ -138,11 +146,15 @@ class IQN_Network(torch.nn.Module):
         # (batch_size*num_quantiles, dense_input_dimension)
         concat = concat.repeat(num_quantiles, 1)
         # (batch_size*num_quantiles, dense_input_dimension)
+        # print("IQN forward 2 :: Concat:", concat.shape, "\nIQN forward 2 :: Quantile_net:", quantile_net.shape)
         concat = concat * quantile_net
 
+        # Advantages layer for dueling architecture
         A = self.A_head(concat)  # (batch_size*num_quantiles, n_actions)
+        # Value layer for dueling architecture
         V = self.V_head(concat)  # (batch_size*num_quantiles, 1)
 
+        # Calculate Q values for the dueling architecture
         Q = V + A - A.mean(dim=-1).unsqueeze(-1)
 
         return Q, tau
@@ -384,6 +396,7 @@ class Inferer:
                 .to("cuda", memory_format=torch.channels_last, non_blocking=True, dtype=torch.float32)
                 - 128
             ) / 128
+            # print("iqn inferer network :: inputs received:", img_inputs_uint8.shape, ": Floats: ", len(float_inputs))
             state_float_tensor = torch.from_numpy(np.expand_dims(float_inputs, axis=0)).to("cuda", non_blocking=True)
             q_values = (
                 self.inference_network(
@@ -448,6 +461,7 @@ def make_untrained_iqn_network(jit: bool, is_inference: bool) -> Tuple[IQN_Netwo
         jit: a boolean indicating whether compilation should be used
     """
 
+    # TODO: Adjust float input dimension and mean/std to ideally dictionaries, or refactor to translate to list only when used
     uncompiled_model = IQN_Network(
         float_inputs_dim=config_copy.float_input_dim,
         float_hidden_dim=config_copy.float_hidden_dim,
@@ -455,8 +469,8 @@ def make_untrained_iqn_network(jit: bool, is_inference: bool) -> Tuple[IQN_Netwo
         dense_hidden_dimension=config_copy.dense_hidden_dimension,
         iqn_embedding_dimension=config_copy.iqn_embedding_dimension,
         n_actions=len(config_copy.inputs),
-        float_inputs_mean=config_copy.float_inputs_mean,
-        float_inputs_std=config_copy.float_inputs_std,
+        float_inputs_mean=MKW_data_translate.float_input_mean,
+        float_inputs_std=MKW_data_translate.float_input_deviation,
     )
     if jit:
         if config_copy.is_linux:

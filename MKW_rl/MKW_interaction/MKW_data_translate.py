@@ -151,7 +151,7 @@ float_input_mean = [
     100000.0, # position.x
     10000.0, # position.y
     100000.0, # position.z
-    0.0, # angle
+    60.0, # speed_norm
     40.0, # external_velocity.x
     10.0, # external_velocity.y
     40.0, # external_velocity.z
@@ -226,7 +226,7 @@ float_input_deviation = [
     250000.0, # position.x
     25000.0, # position.y
     250000.0, # position.z
-    180.0, # angle -- assumption, also assuming this value even helps
+    180.0, # speed_norm
     120.0, # external_velocity.x
     120.0, # external_velocity.y
     120.0, # external_velocity.z
@@ -290,6 +290,7 @@ class Network_Inputs():
     def get_flattened_game_data(self):
         if not self.__flat_game_data:
             temp_game_data = self.game_data
+            temp_game_data["race_data"].pop("race_time")
             for key in temp_game_data["kart_data"].keys():
                 value = temp_game_data["kart_data"][key]
                 if type(value) == vec3:

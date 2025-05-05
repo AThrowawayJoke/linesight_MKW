@@ -81,24 +81,24 @@ class MKW_Interface():
 		}
 
 	def get_surface_properties(self):
-		"""
+		
 		surface_properties = self.kart_collide.surface_properties()
 
-		self.is_wall = (surface_properties.value & SurfaceProperties.WALL) > 0
-		self.is_solid_oob = (surface_properties.value & SurfaceProperties.SOLID_OOB) > 0
-		self.is_boost_ramp = (surface_properties.value & SurfaceProperties.BOOST_RAMP) > 0
-		self.is_offroad = (surface_properties.value & SurfaceProperties.OFFROAD) > 0
-		self.is_boost_panel_or_ramp = (surface_properties.value & SurfaceProperties.BOOST_PANEL_OR_RAMP) > 0
-		self.is_trickable = (surface_properties.value & SurfaceProperties.TRICKABLE) > 0
-
+		is_wall = (surface_properties.value & SurfaceProperties.WALL) > 0
+		is_solid_oob = (surface_properties.value & SurfaceProperties.SOLID_OOB) > 0
+		is_boost_ramp = (surface_properties.value & SurfaceProperties.BOOST_RAMP) > 0
+		is_offroad = (surface_properties.value & SurfaceProperties.OFFROAD) > 0
+		is_boost_panel_or_ramp = (surface_properties.value & SurfaceProperties.BOOST_PANEL_OR_RAMP) > 0
+		is_trickable = (surface_properties.value & SurfaceProperties.TRICKABLE) > 0
+		"""
 		WALL = 0x1
 		SOLID_OOB = 0x2
 		BOOST_RAMP = 0x10
 		OFFROAD = 0x40
 		BOOST_PANEL_OR_RAMP = 0x100
 		TRICKABLE = 0x800
-		""" # Could split into more a precise 0-5 state value, but it is unlikely to have any impact.
-		return self.kart_collide.surface_properties().value
+		"""
+		return is_trickable
         
 	def get_checkpoint_data(self):
 		return {
@@ -171,7 +171,7 @@ class MKW_Interface():
 		kart_data = Kart_Data()
 		kart_data["position"] = self.convert_vec3(self.vehicle_physics.position())
 		# kart_data["part_rotation"] = self.convert_mat34(self.kart_body.kart_part_rotation())
-		kart_data["angle"] = self.kart_body.angle()
+		kart_data["speed"] = self.vehicle_physics.speed_norm()
 		kart_data["external_velocity"] = self.convert_vec3(self.vehicle_physics.external_velocity())
 		kart_data["internal_velocity"] = self.convert_vec3(self.vehicle_physics.internal_velocity())
 		kart_data["moving_road_velocity"] = self.convert_vec3(self.vehicle_physics.moving_road_velocity())
@@ -188,6 +188,7 @@ class MKW_Interface():
 		race_data["lap_completion"] = self.race_mgr_player.lap_completion()
 		race_data["race_completion"] = self.race_mgr_player.race_completion()
 		race_data["race_completion_max"] = self.race_mgr_player.race_completion_max()
+		race_data["race_time"] = mkw_utils.get_unrounded_time(self.race_mgr_player.current_lap(), 0).to_float()
 		race_data["checkpoint_id"] = self.race_mgr_player.checkpoint_id()
 		race_data["current_key_checkpoint"] = self.race_mgr_player.current_kcp()
 		race_data["max_key_checkpoint"] = self.race_mgr_player.max_kcp()

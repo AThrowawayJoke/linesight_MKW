@@ -1,4 +1,5 @@
 from multiprocessing import process
+from turtle import distance
 from config_files import config_copy, user_config
 
 import math
@@ -10,7 +11,6 @@ from typing import Callable, Dict, List
 import flatdict
 
 from MKW_rl.MKW_interaction.MKW_data_translate import *
-from config_files.inputs_list import GCInputs
 
 import cv2
 import numba
@@ -311,7 +311,8 @@ class GameManager:
         pc5 = 0
         floats = None
 
-        distance_since_track_begin = 0.999 # Beginning lap completion percentage is usually about 0.999, depending on the track
+        distance_since_track_begin = 0.99 # Beginning lap completion percentage is usually about 0.999, depending on the track
+        last_progress_improvement = 0.99
         sim_state_car_gear_and_wheels = None
 
         game_data = None
@@ -325,22 +326,28 @@ class GameManager:
             4. Send inputs received from exploration policy to the game
             5. update the network
             """
+
             if self.latest_map_path_requested != savestate_path:
                 # We have to load the savestate we want
+                print("loading savestate")
                 self.sock.send([False, False, computed_action, savestate_path])
                 self.latest_map_path_requested = savestate_path # this seems backwards... TODO
                 continue
-
+            pc2 = time.perf_counter_ns()
+            instrumentation__grab_frame += pc2 - pc
             if (frames_processed % self.run_steps_per_action != 0):
                 self.sock.send([False, False, computed_action, None])
                 compute_action_asap_floats = True
+                frames_processed += 1
                 continue
-
+            pc3 = time.perf_counter_ns()
+            instrumentation__between_run_steps += pc3 - pc2
+            
             self.sock.send([True, True, computed_action, None])
-
-            # print("Now waiting for frame data.")
             # The following line brought to you by literal hours of trying to figure things out only to realize I just needed two functions that I could've just copied from the original code
             frame_data = np.frombuffer(self.sock.recv_bytes(FRAME_WIDTH * FRAME_HEIGHT * 3), dtype = np.uint8).reshape((FRAME_HEIGHT, FRAME_WIDTH, 3))
+            pc4 = time.perf_counter_ns()
+            instrumentation__grab_frame += pc4 - pc3
             frames_processed += 1
             # https://stackoverflow.com/questions/48121916/numpy-resize-rescale-image
             resized_frame = frame_data[::6,::6]
@@ -351,22 +358,24 @@ class GameManager:
             # frame is a numpy array of shape (1, H, W) and dtype np.uint8
 
             rollout_results["frames"].append(resized_frame)
+            pc5 = time.perf_counter_ns()
+            instrumentation__convert_frame += pc5 - pc4
             game_data = self.sock.recv()
+            race_time = max([game_data["race_data"]["race_time"], 1e-12]) # Epsilon trick to avoid division by zero
             network_inputs = Network_Inputs(game_data, rollout_results["actions"])
-            print("Game data converted to:", network_inputs.get_flattened_game_data())
+            # print("Game data converted to:", network_inputs.get_flattened_game_data())
+
+            distance_since_track_begin = game_data["race_data"]["race_completion_max"]
+            if distance_since_track_begin > last_progress_improvement:
+                # print("Game manager rollout race_completion_max value updated:", game_data["race_data"]["race_completion_max"], "Now updating frame:", frames_processed)
+                last_progress_improvement = distance_since_track_begin
+                last_progress_improvement_f = frames_processed
+
+            pc6 = time.perf_counter_ns()
+            instrumentation__grab_floats += pc6 - pc5
 
             if compute_action_asap_floats:
                 compute_action_asap_floats = False
-                pc2 = time.perf_counter_ns()
-
-                previous_actions = [
-                    # Get inputs from k for every k that we have not processed yet
-                    config_copy.inputs[rollout_results["actions"][k] if k >= 0 else config_copy.action_forward_idx]
-                    for k in range(
-                        len(rollout_results["actions"]) - config_copy.n_prev_actions_in_inputs, len(rollout_results["actions"])
-                    )
-                ]
-
 
                 # unfinished
                 floats = np.hstack(
@@ -380,23 +389,19 @@ class GameManager:
                     ),
                     dtype=np.float32
                 )
-                print("Floats generated:", len(floats))
+                # print("Floats generated:", len(floats))
+            pc7 = time.perf_counter_ns()
+            instrumentation__answer_action_step += pc7 - pc6
 
-            if frames_processed > 0 and this_rollout_has_seen_t_negative:
-                if frames_processed % 50 == 0:
-                    instrumentation__between_run_steps += time.perf_counter_ns() - pc # time the run step took
-            pc = time.perf_counter_ns()
-
-            # ============================
-            # BEGIN ON RUN STEP
-            # ============================
-            # print("game_manager rollout(): Shape of img:", rollout_results["frames"][-1].shape(), ": floats:", floats)
+            # print("game_manager rollout(): Shape of img:", rollout_results["frames"][-1].shape, ":: floats:", floats)
             (
                 action_idx,
                 action_was_greedy,
                 q_value,
                 q_values,
             ) = exploration_policy(rollout_results["frames"][-1], floats) # TODO: consider replacing list index with available variable resized_frame
+            pc8 = time.perf_counter_ns()
+            instrumentation__exploration_policy += pc8 - pc7
 
             computed_action = config_copy.inputs[action_idx]  # determine next input
 
@@ -406,12 +411,13 @@ class GameManager:
                 for i, val in enumerate(np.nditer(q_values)):
                     end_race_stats[f"q_value_{i}_starting_frame"] = val
 
+            rollout_results["current_checkpoint_id"].append(game_data["race_data"]["checkpoint_id"])
             rollout_results["race_completion"].append(game_data["race_data"]["race_completion_max"])
-            rollout_results["input_w"].append(config_copy.inputs[action_idx][GCInputs["A"]])
+            rollout_results["input_w"].append(config_copy.inputs[action_idx]["A"])
             rollout_results["actions"].append(action_idx)
             rollout_results["action_was_greedy"].append(action_was_greedy)
             rollout_results["q_values"].append(q_values)
-            rollout_results["state_float"].append(floats)
+            rollout_results["state_float"].append(game_data)
 
             n_th_action_we_compute += 1
 
@@ -428,14 +434,43 @@ class GameManager:
                 give_up_signal_has_been_sent = True
 
             if ((frames_processed > self.max_overall_duration_f or frames_processed > last_progress_improvement_f + self.max_minirace_duration_f) and not this_rollout_is_finished):
-                print("This rollout has finished because you guys suck at your jobs")
-                race_time = frames_processed
-                face_finished = False
+                print("This rollout has finished. Frames processed:", frames_processed, "Last progress improvement:", last_progress_improvement_f)
+                
+                end_race_stats["race_finished"] = False
                 end_race_stats["race_time_for_ratio"] = race_time
                 end_race_stats["race_time"] = config_copy.cutoff_rollout_if_race_not_finished_within_duration_f
                 rollout_results["race_time"] = race_time
-                
-                # Possibly rewind game state? Unnecessary until proven otherwise.
+
+                end_race_stats["instrumentation__answer_normal_step"] = (instrumentation__answer_normal_step / race_time * 50)
+                end_race_stats["instrumentation__answer_action_step"] = (instrumentation__answer_action_step / race_time * 50)
+                end_race_stats["instrumentation__between_run_steps"] = (instrumentation__between_run_steps / race_time * 50)
+                end_race_stats["instrumentation__grab_frame"] = instrumentation__grab_frame / race_time * 50
+                end_race_stats["instrumentation__convert_frame"] = (instrumentation__convert_frame / race_time * 50)
+                end_race_stats["instrumentation__grab_floats"] = instrumentation__grab_floats / race_time * 50
+                end_race_stats["instrumentation__exploration_policy"] = (instrumentation__exploration_policy / race_time * 50)
+                end_race_stats["instrumentation__request_inputs_and_speed"] = (instrumentation__request_inputs_and_speed / race_time * 50)
+
+                end_race_stats["tmi_protection_cutoff"] = False
+            
                 this_rollout_is_finished = True
+            elif rollout_results["race_completion"][-1] >= 4:
+                end_race_stats["race_finished"] = True
+                end_race_stats["race_time_for_ratio"] = race_time
+                end_race_stats["race_time"] = race_time
+                rollout_results["race_time"] = race_time
+
+                end_race_stats["instrumentation__answer_normal_step"] = (instrumentation__answer_normal_step / race_time * 50)
+                end_race_stats["instrumentation__answer_action_step"] = (instrumentation__answer_action_step / race_time * 50)
+                end_race_stats["instrumentation__between_run_steps"] = (instrumentation__between_run_steps / race_time * 50)
+                end_race_stats["instrumentation__grab_frame"] = instrumentation__grab_frame / race_time * 50
+                end_race_stats["instrumentation__convert_frame"] = (instrumentation__convert_frame / race_time * 50)
+                end_race_stats["instrumentation__grab_floats"] = instrumentation__grab_floats / race_time * 50
+                end_race_stats["instrumentation__exploration_policy"] = (instrumentation__exploration_policy / race_time * 50)
+                end_race_stats["instrumentation__request_inputs_and_speed"] = (instrumentation__request_inputs_and_speed / race_time * 50)
+
+                end_race_stats["tmi_protection_cutoff"] = False
+
+                this_rollout_is_finished = True
+
         return rollout_results, end_race_stats
 

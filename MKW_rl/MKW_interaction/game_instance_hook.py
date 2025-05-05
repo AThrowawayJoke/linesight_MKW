@@ -32,6 +32,7 @@ class GameInstanceHook():
         self.port = port
         self.load_state_desired = False
         self.desired_savestate = None
+        self.last_game_data = None
 
     def framedrawn_handler(self, width, height, data):
         # Wait for data necessary to determine what we want to do
@@ -77,6 +78,7 @@ class GameInstanceHook():
             if not self.game_data_initiated:
                 self.game_data_interface.initialize_race_objects()
                 self.game_data_initiated = True
+            # self.game_data_interface.initialize_race_objects()
             kart_pos_rot = self.game_data_interface.get_kart_position_and_rotation()
             kart_velocity = self.game_data_interface.get_kart_velocities() # Returns dicti of 4 vectors, "external_velocity", "internal_velocity", "moving_road_velocity", and "moving_water_velocity"
             checkpoint_data = self.game_data_interface.get_checkpoint_data()
@@ -89,6 +91,7 @@ class GameInstanceHook():
                 if type(value) == vec3:
                     game_data["kart_data"][key] = [value.x, value.y, value.z]
             self.conn.send(game_data)
+            self.last_game_data = game_data
         elif game_data_request:
             print("ERROR: game_data_request was sent before race state was loaded")
         # send the image data here, so we can set desired_inputs before we exit the function
@@ -105,6 +108,7 @@ class GameInstanceHook():
             print("Loaded new savestate:", self.desired_savestate)
 
         if self.desired_inputs and self.desired_inputs != self.last_desired_inputs:
+            print("Applying inputs:", self.desired_inputs)
             controller.set_gc_buttons(0, self.desired_inputs)
             self.last_desired_inputs = self.desired_inputs
 

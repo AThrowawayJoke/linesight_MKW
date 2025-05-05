@@ -1,4 +1,4 @@
-from dolphin import gui, event
+from dolphin import gui, event # type: ignore
 from Modules import input_display as display
 
 from Modules.mkw_classes import RaceManager, RaceManagerPlayer, RaceState

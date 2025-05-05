@@ -1,4 +1,4 @@
-from dolphin import event, gui, utils
+from dolphin import event, gui # type: ignore
 import configparser
 import math
 import os
@@ -72,7 +72,7 @@ class ConfigInstance():
 def main():
     config = configparser.ConfigParser()
 
-    file_path = os.path.join(utils.get_script_dir(), 'modules', 'infodisplay.ini')
+    file_path = os.path.join('utils.get_script_dir()', 'modules', 'infodisplay.ini')
     config.read(file_path)
 
     if not config.sections():
@@ -81,8 +81,8 @@ def main():
     global c
     c = ConfigInstance(config)
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+    # main()
 
 # draw information to the screen
 
@@ -91,7 +91,7 @@ def create_infodisplay():
 
     if c.debug:
         # test values here
-        text += f"{utils.get_game_id()}\n\n"
+        text += f"RMCE01\n\n"
     
     if c.frame_count:
         text += f"Frame: {mkw_utils.frame_of_input()}\n\n"

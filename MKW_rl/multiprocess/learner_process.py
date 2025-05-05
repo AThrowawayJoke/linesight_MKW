@@ -40,7 +40,7 @@ def learner_process_fn(
     rollout_queues,
     uncompiled_shared_network,
     shared_network_lock,
-    shared_steps: mp.Value,
+    shared_steps: mp.Value, # type: ignore
     base_dir: Path,
     save_dir: Path,
     tensorboard_base_dir: Path,

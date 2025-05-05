@@ -123,7 +123,7 @@ def collector_process_fn(
         rollout_duration = rollout_end_time - rollout_start_time
         rollout_results["worker_time_in_rollout_percentage"] = rollout_duration / (time.perf_counter() - time_since_last_queue_push)
         time_since_last_queue_push = time.perf_counter()
-        print("", flush=True)
+        print("Collector_process: Rollout finished", flush=True)
 
         if not mkw.last_rollout_crashed:
             rollout_queue.put(

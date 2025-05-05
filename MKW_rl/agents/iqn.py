@@ -125,9 +125,9 @@ class IQN_Network(torch.nn.Module):
         """
         batch_size = img.shape[0]
         img_outputs = self.img_head(img)
+        # print("IQN Forward 1 :: Batch_size of", batch_size, " And img_outputs of", img_outputs.shape, "float length:", float_inputs.shape, "Floats raw:", float_inputs)
         float_outputs = self.float_feature_extractor((float_inputs - self.float_inputs_mean) / self.float_inputs_std)
         concat = torch.cat((img_outputs, float_outputs), 1)  # (batch_size, dense_input_dimension)
-        # print("IQN Forward 1 :: Batch_size of", batch_size, " And img_outputs of", img_outputs.shape, "float length:", float_outputs.shape)
         if tau is None:
             tau = (
                 torch.arange(num_quantiles // 2, device="cuda", dtype=torch.float32).repeat_interleave(batch_size).unsqueeze(1)

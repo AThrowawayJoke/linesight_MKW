@@ -32,8 +32,7 @@ run_name = "MARIO_KART_WII"
 running_speed = 80
 
 tm_engine_step_per_action = 4
-ms_per_tm_engine_step = 10
-ms_per_action = ms_per_tm_engine_step * tm_engine_step_per_action
+f_per_action = tm_engine_step_per_action
 n_zone_centers_in_inputs = 40
 one_every_n_zone_centers_in_inputs = 20
 n_zone_centers_extrapolate_after_end_of_map = 1000
@@ -41,10 +40,10 @@ n_zone_centers_extrapolate_before_start_of_map = 20
 n_prev_actions_in_inputs = 5
 n_contact_material_physics_behavior_types = 4  # See contact_materials.py
 cutoff_rollout_if_race_not_finished_within_duration_f = 21_600 # 6 minutes at 60fps
-cutoff_rollout_if_no_vcp_passed_within_duration_f = 120 # 2 seconds at 60fps
+cutoff_rollout_if_no_vcp_passed_within_duration_f = 240 # 4 seconds at 60fps
 
 temporal_mini_race_duration_f = 420
-temporal_mini_race_duration_actions = temporal_mini_race_duration_f // ms_per_action
+temporal_mini_race_duration_actions = temporal_mini_race_duration_f // f_per_action
 oversample_long_term_steps = 40
 oversample_maximum_term_steps = 5
 min_horizon_to_update_priority_actions = temporal_mini_race_duration_actions - 40
@@ -84,9 +83,9 @@ n_steps = 3
 constant_reward_per_ms = -6 / 5000
 reward_per_m_advanced_along_centerline = 5 / 500
 
-float_input_dim = 36 + 7 * n_prev_actions_in_inputs + 1
+float_input_dim = 36 + 7 * n_prev_actions_in_inputs
 float_hidden_dim = 256
-conv_head_output_dim = 5632
+conv_head_output_dim = 1728
 dense_hidden_dimension = 1024
 iqn_embedding_dimension = 64
 iqn_n = 8  # must be an even number because we sample tau symmetrically around 0.5
@@ -98,8 +97,10 @@ prio_alpha = np.float32(0)  # Rainbow-IQN paper: 0.2, Rainbow paper: 0.5, PER pa
 prio_epsilon = np.float32(2e-3)  # Defaults to 10^-6 in stable-baselines
 prio_beta = np.float32(1)
 
+# State-action pair processed in action exploration will be discarded after randomly selected this amount of times
 number_times_single_memory_is_used_before_discard = 32  # 32 // 4
 
+# Schedule how many state-action pairs we save in memory at specific sections of training
 memory_size_schedule = [
     (0, (50_000, 20_000)),
     (5_000_000 * global_schedule_speed, (100_000, 75_000)),
@@ -141,18 +142,22 @@ overall_reset_mul_factor = 0.01  # 0 : nothing happens ; 1 : full reset
 clip_grad_value = 1000
 clip_grad_norm = 30
 
+# Number of state-action pairs we train before updating the Target Network as defined by DQN.
 number_memories_trained_on_between_target_network_updates = 2048
 soft_update_tau = 0.02
 
+# Helper values?
 distance_between_checkpoints = 0.5
 road_width = 90  ## a little bit of margin, could be closer to 24 probably ? Don't take risks there are curvy roads
 max_allowable_distance_to_virtual_checkpoint = np.sqrt((distance_between_checkpoints / 2) ** 2 + (road_width / 2) ** 2)
 
+# Restart intervals in case of lost connection or game crash
 timeout_during_run_ms = 10_100
 timeout_between_runs_ms = 600_000_000
 tmi_protection_timeout_s = 500
 game_reboot_interval = 3600 * 12  # In seconds
 
+# Do not save runs until after we start getting roughly human-level results (i.e. prevent saving 1000s of extra bad runs)
 frames_before_save_best_runs = 1_500_000
 
 plot_race_time_left_curves = False
@@ -172,11 +177,13 @@ use_jit = True
 # For instance, if the original install is called 'dolphin_folder', installations 2 and 3 should be named 'dolphin_folder2' and 'dolphin_folder3'.
 gpu_collectors_count = 2
 
+# Every n batches, each collection process updates it's network to match the current Online Network as defined by DQN
 send_shared_network_every_n_batches = 10
 update_inference_network_every_n_actions = 20
 
 target_self_loss_clamp_ratio = 4
 
+# Reward functions for standard progression along the track
 final_speed_reward_as_if_duration_s = 0
 final_speed_reward_per_m_per_s = reward_per_m_advanced_along_centerline * final_speed_reward_as_if_duration_s
 

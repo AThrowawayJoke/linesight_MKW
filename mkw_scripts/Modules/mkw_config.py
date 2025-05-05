@@ -10,10 +10,3 @@ Republic of Korea: NTSC-K -- "RMCK01"
 """
 
 game_id_string = "RMCE01"
-
-# Private variable to avoid confusion in usage
-__address = {"RMCE01": 0x809BF0B8, "RMCP01": 0x809C38C0,
-    "RMCJ01": 0x809C2920, "RMCK01": 0x809B1F00}
-
-address_id = __address[game_id_string]
-

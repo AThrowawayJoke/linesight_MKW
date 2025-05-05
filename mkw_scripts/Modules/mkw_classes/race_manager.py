@@ -37,7 +37,9 @@ class RaceManager:
     @staticmethod
     def chain() -> int:
         try:
-            return memory.read_u32(mkw_config.address_id)
+            address = {"RMCE01": 0x809B8F70, "RMCP01": 0x809BD730,
+                    "RMCJ01": 0x809BC790, "RMCK01": 0x809ABD70}
+            return memory.read_u32(address[mkw_config.game_id_string])
         except KeyError:
             raise RegionError
 
@@ -65,7 +67,7 @@ class RaceManager:
     def race_manager_player(player_idx=0) -> int:
         # Assert player_idx is within the number of current players
         race_scenario_ref = RaceConfigScenario(RaceConfig.race_scenario())
-        # assert(0 <= player_idx < race_scenario_ref.player_count())
+        assert(0 <= player_idx < race_scenario_ref.player_count())
 
         race_manager_ref = RaceManager.chain()
         player_array = race_manager_ref + 0xC

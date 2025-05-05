@@ -121,6 +121,13 @@ class ExactTimer:
         carry, self.sec = divmod(self.sec, 60)
         self.min += int(carry)
 
+    def to_float(self) -> float:
+        self.normalize()
+        total = self.mil
+        total += self.sec
+        total += self.min * 60
+        return total
+
     def __str__(self):
         return "{:02d}:{:012.9f}".format(self.min, self.sec + self.mil)
 

@@ -22,7 +22,9 @@ class InputMgr:
     @staticmethod
     def chain() -> int:
         try:
-            return memory.read_u32(mkw_config.address_id)
+            address = {"RMCE01": 0x809B8F4C, "RMCP01": 0x809BD70C,
+                    "RMCJ01": 0x809BC76C, "RMCK01": 0x809ABD4C}
+            return memory.read_u32(address[mkw_config.game_id_string])
         except KeyError:
             raise RegionError
 

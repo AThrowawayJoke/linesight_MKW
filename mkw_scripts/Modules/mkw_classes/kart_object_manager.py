@@ -7,7 +7,9 @@ class KartObjectManager:
     @staticmethod
     def chain() -> int:
         try:
-            return memory.read_u32(mkw_config.address_id)
+            address = {"RMCE01": 0x809BD110, "RMCP01": 0x809C18F8,
+                    "RMCJ01": 0x809C0958, "RMCK01": 0x809AFF38}
+            return memory.read_u32(address[mkw_config.game_id_string])
         except KeyError:
             raise RegionError
 
@@ -18,7 +20,7 @@ class KartObjectManager:
 
     @staticmethod
     def kart_object(player_idx=0) -> int:
-        # assert(0 <= player_idx < KartObjectManager.player_count())
+        assert(0 <= player_idx < KartObjectManager.player_count())
         kart_obj_arr_ref = KartObjectManager.kart_object_arr()
         kart_obj_ptr = kart_obj_arr_ref + (player_idx * 0x4)
         return memory.read_u32(kart_obj_ptr)

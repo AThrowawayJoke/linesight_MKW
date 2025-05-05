@@ -38,7 +38,9 @@ def chase_pointer(base_address, offsets, data_type):
 
 
 def frame_of_input():
-    return memory.read_u32(mkw_config.address_id)
+    address = {"RMCE01": 0x809BF0B8, "RMCP01": 0x809C38C0,
+               "RMCJ01": 0x809C2920, "RMCK01": 0x809B1F00}
+    return memory.read_u32(address[mkw_config.game_id_string])
 
 def delta_position(playerIdx=0):
     dynamics_ref = VehicleDynamics(playerIdx)

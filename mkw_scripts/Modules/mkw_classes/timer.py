@@ -1,4 +1,4 @@
-from dolphin import memory
+from dolphin import memory # type: ignore
 
 class Timer:
     def __init__(self, addr):

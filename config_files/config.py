@@ -40,7 +40,7 @@ n_zone_centers_extrapolate_before_start_of_map = 20
 n_prev_actions_in_inputs = 5
 n_contact_material_physics_behavior_types = 4  # See contact_materials.py
 cutoff_rollout_if_race_not_finished_within_duration_f = 21_600 # 6m at 60fps
-cutoff_rollout_if_no_vcp_passed_within_duration_f = 210 # 3.5s at 60fps ???
+cutoff_rollout_if_no_vcp_passed_within_duration_f = 120 # 2s at 60fps 
 
 temporal_mini_race_duration_f = 420
 temporal_mini_race_duration_actions = temporal_mini_race_duration_f // f_per_action
@@ -81,7 +81,7 @@ engineered_close_to_vcp_reward_schedule = [
 
 n_steps = 3
 constant_reward_per_ms = -6 / 5000
-reward_per_m_advanced_along_centerline = 100
+reward_per_m_advanced_along_centerline = 1000
 
 float_input_dim = 36 + 7 * n_prev_actions_in_inputs
 float_hidden_dim = 256
@@ -104,7 +104,8 @@ number_times_single_memory_is_used_before_discard = 32  # 32 // 4
 memory_size_schedule = [
     (0, (50_000, 20_000)),
     (5_000_000 * global_schedule_speed, (100_000, 75_000)),
-    (7_000_000 * global_schedule_speed, (200_000, 150_000)),
+    (8_000_000 * global_schedule_speed, (400_000, 300_000)),
+    (12_000_000 * global_schedule_speed, (1_100_000, 750_000)),
 ]
 lr_schedule = [
     (0, 1e-3),
@@ -155,7 +156,7 @@ max_allowable_distance_to_virtual_checkpoint = np.sqrt((distance_between_checkpo
 timeout_during_run_ms = 10_100
 timeout_between_runs_ms = 600_000_000
 tmi_protection_timeout_s = 500
-game_reboot_interval = 3600 * 12  # In seconds
+game_reboot_interval = 3600 * 6  # In seconds
 
 # Do not save runs until after we start getting roughly human-level results (i.e. prevent saving 1000s of extra bad runs)
 frames_before_save_best_runs = 1_500_000
@@ -175,7 +176,7 @@ use_jit = True
 # We recommend trying different values and finding the one that maximises the number of batches done per unit of time.
 # Note that each additional instance requires a separate folder containing a full Dolphin installation, and should be named sequentially.
 # For instance, if the original install is called 'dolphin_folder', installations 2 and 3 should be named 'dolphin_folder2' and 'dolphin_folder3'.
-gpu_collectors_count = 4
+gpu_collectors_count = 3
 
 # Every n batches, each collection process updates it's network to match the current Online Network as defined by DQN
 send_shared_network_every_n_batches = 10

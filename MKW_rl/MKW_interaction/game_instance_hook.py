@@ -12,6 +12,8 @@ import numpy
 import cv2
 from multiprocessing.connection import Listener
 from config_files import config_copy
+import inspect
+source_file_path = inspect.getfile(inspect.currentframe())
 
 from MKW_rl.MKW_interaction.MKW_data_translate import *
 
@@ -52,7 +54,7 @@ class GameInstanceHook():
             self.desired_inputs = new_inputs
 
         if load_state_request is not None:
-            print("Got a request for savestate load:", socket_data[3])
+            # print("Got a request for savestate load:", socket_data[3])
             self.load_state_desired = True
             self.desired_savestate = socket_data[3]
             if frame_data_request:
@@ -92,7 +94,6 @@ class GameInstanceHook():
             
     def frameadvance_handler(self):
         self.frame_counter += 1
-        # draw on screen
         gui.draw_text((10, 10), self.red, f"Frame: {self.frame_counter}")
 
         if self.load_state_desired:
@@ -110,13 +111,20 @@ class GameInstanceHook():
         print("Initialize connection to Dolphin ")
         # self.iface = TMInterface(self.tmi_port) # reset the interface
 
-        connection_attempts_start_time = time.perf_counter()
-        last_connection_error_message_time = time.perf_counter()
-
-        self.listener = Listener((HOST, self.port))
-        print("Game hook socket listening on port", self.port)
-
-        self.conn = self.listener.accept()
+        success = False
+        fails = 0
+        while not success:
+            try:
+                self.listener = Listener((HOST, self.port))
+                print("Game hook socket listening on port", self.port)
+                self.conn = self.listener.accept()
+                success = True
+            except OSError:
+                self.port += 1
+                fails += 1
+                if fails > 10:
+                    print("Error connecting to program.")
+                    success = True # just let the puppy crash lol
         print("Connected accepted from:", self.listener.last_accepted)
 
 # Possibly send a packet through a known channel, which then establishes a separate connection?
@@ -130,10 +138,10 @@ def is_dolphin_process(process: psutil.Process) -> bool:
 def get_dolphin_pids() -> List[int]:
     return [process.pid for process in psutil.process_iter() if is_dolphin_process(process)]
 
-# Use base tmi port, plus number of active dolphin instances (does not handle restarts correctly), minus 1 for this instance
-mymanager = GameInstanceHook(config_copy.base_tmi_port + len(get_dolphin_pids()) - 1)
+# Use base tmi port in an attempt to find the right port lol
+mymanager = GameInstanceHook(config_copy.base_tmi_port) #  + len(get_dolphin_pids()) - 1
 print("Working from port", mymanager.port)
-
+print("Working in directory", source_file_path)
 """
 Register the socket, ensure it is connected
 when framedrawn_handler is called, we read from the socket, waiting if necessary.

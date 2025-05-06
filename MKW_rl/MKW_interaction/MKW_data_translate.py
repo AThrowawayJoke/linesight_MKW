@@ -14,6 +14,7 @@ import os, sys
 sys.path.append(os.path.expanduser("~") + "\\AppData\\Local\\programs\\python\\python312\\lib\\site-packages")
 import flatdict
 from config_files import config_copy
+import numpy as np
 
 @dataclass
 class mat34:
@@ -290,10 +291,26 @@ class Network_Inputs():
     def get_flattened_game_data(self):
         if not self.__flat_game_data:
             temp_game_data = self.game_data
-            temp_game_data["race_data"].pop("race_time")
+            temp_game_data["race_data"].pop("race_time", None)
             for key in temp_game_data["kart_data"].keys():
                 value = temp_game_data["kart_data"][key]
                 if type(value) == vec3:
                     temp_game_data["kart_data"][key] = [value.x, value.y, value.z]
             self.__flat_game_data = flatdict.FlatterDict(temp_game_data).values()
         return self.__flat_game_data
+    
+
+def get_1d_state_floats(game_data, previous_actions_idx):
+    network_inputs = Network_Inputs(game_data, previous_actions_idx)
+
+    return np.hstack(
+        (
+            np.array(
+                network_inputs.get_input_data()
+            ),
+            np.array(
+                network_inputs.get_flattened_game_data()
+            )
+        ),
+        dtype=np.float32
+    )

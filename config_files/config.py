@@ -39,8 +39,8 @@ n_zone_centers_extrapolate_after_end_of_map = 1000
 n_zone_centers_extrapolate_before_start_of_map = 20
 n_prev_actions_in_inputs = 5
 n_contact_material_physics_behavior_types = 4  # See contact_materials.py
-cutoff_rollout_if_race_not_finished_within_duration_f = 21_600 # 6 minutes at 60fps
-cutoff_rollout_if_no_vcp_passed_within_duration_f = 240 # 4 seconds at 60fps
+cutoff_rollout_if_race_not_finished_within_duration_f = 21_600 # 6m at 60fps
+cutoff_rollout_if_no_vcp_passed_within_duration_f = 210 # 3.5s at 60fps ???
 
 temporal_mini_race_duration_f = 420
 temporal_mini_race_duration_actions = temporal_mini_race_duration_f // f_per_action
@@ -81,7 +81,7 @@ engineered_close_to_vcp_reward_schedule = [
 
 n_steps = 3
 constant_reward_per_ms = -6 / 5000
-reward_per_m_advanced_along_centerline = 5 / 500
+reward_per_m_advanced_along_centerline = 100
 
 float_input_dim = 36 + 7 * n_prev_actions_in_inputs
 float_hidden_dim = 256
@@ -175,7 +175,7 @@ use_jit = True
 # We recommend trying different values and finding the one that maximises the number of batches done per unit of time.
 # Note that each additional instance requires a separate folder containing a full Dolphin installation, and should be named sequentially.
 # For instance, if the original install is called 'dolphin_folder', installations 2 and 3 should be named 'dolphin_folder2' and 'dolphin_folder3'.
-gpu_collectors_count = 2
+gpu_collectors_count = 4
 
 # Every n batches, each collection process updates it's network to match the current Online Network as defined by DQN
 send_shared_network_every_n_batches = 10
@@ -185,7 +185,7 @@ target_self_loss_clamp_ratio = 4
 
 # Reward functions for standard progression along the track
 final_speed_reward_as_if_duration_s = 0
-final_speed_reward_per_m_per_s = reward_per_m_advanced_along_centerline * final_speed_reward_as_if_duration_s
+final_speed_reward_per_f_per_s = reward_per_m_advanced_along_centerline * final_speed_reward_as_if_duration_s
 
 shaped_reward_dist_to_cur_vcp = -0.1
 shaped_reward_min_dist_to_cur_vcp = 2

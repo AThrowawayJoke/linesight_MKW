@@ -7,11 +7,12 @@ from mkw_scripts.Modules.mkw_classes import vec3 as hookvec3
 from mkw_scripts.Modules.mkw_classes import mat34 as hookmat34
 
 import mkw_scripts.Modules.mkw_utils as mkw_utils
+from mkw_scripts.Modules.mkw_classes import ExactTimer, Timer
 from mkw_scripts.Modules.mkw_classes import RaceManager, RaceManagerPlayer, RaceState
 from mkw_scripts.Modules.mkw_classes import RaceConfig, RaceConfigScenario, RaceConfigSettings
 from mkw_scripts.Modules.mkw_classes import KartObject, KartMove, KartSettings, KartBody
 from mkw_scripts.Modules.mkw_classes import VehicleDynamics, VehiclePhysics, KartBoost, KartJump
-from mkw_scripts.Modules.mkw_classes import KartState, KartCollide, KartInput, RaceInputState
+from mkw_scripts.Modules.mkw_classes import KartState, KartCollide, KartInput, TimerManager
 
 from MKW_rl.MKW_interaction.MKW_data_translate import *
 
@@ -58,6 +59,8 @@ class MKW_Interface():
 
 		self.vehicle_dynamics = VehicleDynamics(addr=self.kart_body.vehicle_dynamics())
 		self.vehicle_physics = VehiclePhysics(addr=self.vehicle_dynamics.vehicle_physics())
+		self.timer_manager = TimerManager(addr=self.race_mgr.timer_manager())
+		self.timer = Timer(self.timer_manager.timer())
 
 	def get_start_boost_charge(self):
 		return self.kart_state.start_boost_charge()
@@ -188,13 +191,17 @@ class MKW_Interface():
 		race_data["lap_completion"] = self.race_mgr_player.lap_completion()
 		race_data["race_completion"] = self.race_mgr_player.race_completion()
 		race_data["race_completion_max"] = self.race_mgr_player.race_completion_max()
-		race_data["race_time"] = mkw_utils.get_unrounded_time(self.race_mgr_player.current_lap(), 0).to_float()
 		race_data["checkpoint_id"] = self.race_mgr_player.checkpoint_id()
 		race_data["current_key_checkpoint"] = self.race_mgr_player.current_kcp()
 		race_data["max_key_checkpoint"] = self.race_mgr_player.max_kcp()
 		# race_data["respawn_point"] = self.get_respawn_point()
 		race_data["driving_direction"] = self.get_driving_direction()
 		race_data["item_count"] = self.get_item_count()
+
+		# temp_timer: Timer = self.race_mgr_player.lap_finish_time()
+		race_data["race_time"] = self.timer.minutes() * 60 + self.timer.seconds() + self.timer.milliseconds() / 1000
+		#ExactTimer(temp_timer.minutes(), temp_timer.seconds(), temp_timer.milliseconds()).to_float() # peak efficiency
+
 		# race_data["item_type"] = self.get_item_type()
 		return race_data
 

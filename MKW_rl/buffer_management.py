@@ -14,21 +14,37 @@ from torchrl.data import ReplayBuffer
 from config_files import config_copy
 from MKW_rl.experience_replay.experience_replay_interface import Experience
 from MKW_rl.reward_shaping import speedslide_quality_tarmac
+from MKW_rl.MKW_interaction.MKW_data_translate import get_1d_state_floats
 
 
-@jit(nopython=True)
+# @jit(nopython=True)
 def get_potential(state_float):
-    # https://people.eecs.berkeley.edu/~pabbeel/cs287-fa09/readings/NgHaradaRussell-shaping-ICML1999.pdf
+
+    distance_traveled_potential = 0
+    speed = state_float["kart_data"]["speed"]
+
+    if speed < 80:
+        distance_traveled_potential += -2.0
+    if speed > 92:
+        distance_traveled_potential += 1.0
+    if speed > 117:
+        distance_traveled_potential += 1.0
+
+    return distance_traveled_potential
+
+    """# https://people.eecs.berkeley.edu/~pabbeel/cs287-fa09/readings/NgHaradaRussell-shaping-ICML1999.pdf
     vector_vcp_to_vcp_further_ahead = state_float[65:68] - state_float[62:65] # hard-coded, adjust to use dictionary? state_float class?
     vector_vcp_to_vcp_further_ahead_normalized = vector_vcp_to_vcp_further_ahead / np.linalg.norm(vector_vcp_to_vcp_further_ahead)
-
+    # current vcp is target ahead of us, previous vcp is what we've just passed
+    # Punish ai for being farther away from current vcp by ratio of how far we are from previous vcp
+    # -0.1 * max(2, min(25, previous_vector_vc_dist)) + (0 * n)
     return (
         config_copy.shaped_reward_dist_to_cur_vcp
         * max(
             config_copy.shaped_reward_min_dist_to_cur_vcp,
-            min(config_copy.shaped_reward_max_dist_to_cur_vcp, np.linalg.norm(state_float[62:65])),
+            min(config_copy.shaped_reward_max_dist_to_cur_vcp, np.linalg.norm(state_float[62:65])), # max of 25
         )
-    ) + (config_copy.shaped_reward_point_to_vcp_ahead * (vector_vcp_to_vcp_further_ahead_normalized[2] - 1))
+    ) + (config_copy.shaped_reward_point_to_vcp_ahead * (vector_vcp_to_vcp_further_ahead_normalized[2] - 1))"""
 
 
 def fill_buffer_from_rollout_with_n_steps_rule(
@@ -46,7 +62,7 @@ def fill_buffer_from_rollout_with_n_steps_rule(
     engineered_superhopping_reward=0.0,
     engineered_supergrinding_reward=0.0,
 ):
-    assert len(rollout_results["frames"]) == len(rollout_results["current_zone_idx"])
+    assert len(rollout_results["frames"]) == len(rollout_results["current_checkpoint_id"])
     n_frames = len(rollout_results["frames"])
 
     number_memories_added_train = 0
@@ -62,20 +78,20 @@ def fill_buffer_from_rollout_with_n_steps_rule(
     reward_into = np.zeros(n_frames)
     for i in range(1, n_frames): # run for each frame of the rollout
         reward_into[i] += config_copy.constant_reward_per_ms * (
-            config_copy.ms_per_action
+            config_copy.f_per_action
             if (i < n_frames - 1 or ("race_time" not in rollout_results))
-            else rollout_results["race_time"] - (n_frames - 2) * config_copy.ms_per_action
+            else rollout_results["race_time"] - (n_frames - 2) * config_copy.f_per_action
         )
         reward_into[i] += (
             rollout_results["race_completion"][i] - rollout_results["race_completion"][i - 1]
         ) * config_copy.reward_per_m_advanced_along_centerline
         if i < n_frames - 1:
-            if config_copy.final_speed_reward_per_m_per_s != 0 and rollout_results["state_float"][i][58] > 0:
-                # car has velocity *forward*
-                reward_into[i] += config_copy.final_speed_reward_per_m_per_s * (
-                    np.linalg.norm(rollout_results["state_float"][i][56:59]) - np.linalg.norm(rollout_results["state_float"][i - 1][56:59])
+            if config_copy.final_speed_reward_per_f_per_s != 0 and rollout_results["state_float"][i]["kart_data"]["speed"] > 0:
+                # car is gaining speed
+                reward_into[i] += config_copy.final_speed_reward_per_f_per_s * (
+                    rollout_results["state_float"]["kart_data"]["speed"] - rollout_results["state_float"][i - 1]["kart_data"]["speed"]
                 )
-            if engineered_speedslide_reward != 0 and np.all(rollout_results["state_float"][i][25:29]):
+            """if engineered_speedslide_reward != 0 and np.all(rollout_results["state_float"][i][25:29]):
                 # all wheels touch the ground
                 reward_into[i] += engineered_speedslide_reward * max(
                     0.0,
@@ -97,7 +113,7 @@ def fill_buffer_from_rollout_with_n_steps_rule(
                 reward_into[i] += engineered_close_to_vcp_reward * max(
                     config_copy.engineered_reward_min_dist_to_cur_vcp,
                     min(config_copy.engineered_reward_max_dist_to_cur_vcp, np.linalg.norm(rollout_results["state_float"][i][62:65])),
-                )
+                )"""
     for i in range(n_frames - 1):  # Loop over all frames that were generated
         # Switch memory buffer sometimes
         if random.random() < 0.1:
@@ -133,6 +149,10 @@ def fill_buffer_from_rollout_with_n_steps_rule(
             next_state_img = state_img
             next_state_float = state_float
             next_state_potential = 0
+
+        # TODO: minor bug: either current state or next_state has incorrect actions list
+        state_float = get_1d_state_floats(state_float, rollout_results["actions"])
+        next_state_float = get_1d_state_floats(next_state_float, rollout_results["actions"])
 
         list_to_fill.append(
             Experience(

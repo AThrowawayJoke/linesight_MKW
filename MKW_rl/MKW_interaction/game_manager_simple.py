@@ -131,7 +131,7 @@ class GameManager:
                 'powershell -executionPolicy bypass -command "& {'
                 f" $process = start-process -FilePath '{config_copy.dolphin_base_path}{dolphin_process_number}\\{config_copy.windows_dolphinexe_filename}'" # Launch .exe file
                 " -PassThru -ArgumentList " # Assign arguments for .exe
-                f'\'--video_backend="{config_copy.video_backend}" --config=Dolphin.Core.EmulationSpeed={config_copy.game_speed} --script MKW_rl\\MKW_interaction\\game_instance_hook.py --no-python-subinterpreters --exec="{config_copy.game_path}"\';'
+                f'\'--video_backend="{config_copy.video_backend}" --config=Dolphin.Core.EmulationSpeed={config_copy.game_speed} --script MKW_rl\\MKW_interaction\\game_instance_hook.py --batch --no-python-subinterpreters --exec="{config_copy.game_path}"\';'
                 ' echo exit $process.id}"' # push process_id to stdout to read later
             )
             # print(launch_string)
@@ -316,6 +316,11 @@ class GameManager:
         sim_state_car_gear_and_wheels = None
 
         game_data = None
+        
+        # We have to load the savestate we want at the start of the loop because that seems reasonable
+        print("loading savestate")
+        self.sock.send([False, False, computed_action, savestate_path])
+        self.latest_map_path_requested = savestate_path # this seems backwards... TODO
 
         while not this_rollout_is_finished:
             """
@@ -361,12 +366,13 @@ class GameManager:
             pc5 = time.perf_counter_ns()
             instrumentation__convert_frame += pc5 - pc4
             game_data = self.sock.recv()
+            # print("Game manager rollout() :: race time is", game_data["race_data"]["race_time"])
             race_time = max([game_data["race_data"]["race_time"], 1e-12]) # Epsilon trick to avoid division by zero
             network_inputs = Network_Inputs(game_data, rollout_results["actions"])
             # print("Game data converted to:", network_inputs.get_flattened_game_data())
 
             distance_since_track_begin = game_data["race_data"]["race_completion_max"]
-            if distance_since_track_begin > last_progress_improvement:
+            if distance_since_track_begin > last_progress_improvement + 0.0001: # Force the ai to improve by non-micro steps
                 # print("Game manager rollout race_completion_max value updated:", game_data["race_data"]["race_completion_max"], "Now updating frame:", frames_processed)
                 last_progress_improvement = distance_since_track_begin
                 last_progress_improvement_f = frames_processed
@@ -433,8 +439,10 @@ class GameManager:
                 map_change_requested_time = frames_processed
                 give_up_signal_has_been_sent = True
 
-            if ((frames_processed > self.max_overall_duration_f or frames_processed > last_progress_improvement_f + self.max_minirace_duration_f) and not this_rollout_is_finished):
-                print("This rollout has finished. Frames processed:", frames_processed, "Last progress improvement:", last_progress_improvement_f)
+            # print(game_data["start_boost_charge"], " And race time is", race_time)
+            # Failed to finish race in time. Note that race_time is used to prevent resetting during the countdown
+            if ((frames_processed > self.max_overall_duration_f or frames_processed > last_progress_improvement_f + self.max_minirace_duration_f) and not this_rollout_is_finished and race_time > 0.5):
+                print("This rollout has finished. Frames processed:", frames_processed, "Last progress improvement:", last_progress_improvement_f, "Race time:", race_time)
                 
                 end_race_stats["race_finished"] = False
                 end_race_stats["race_time_for_ratio"] = race_time

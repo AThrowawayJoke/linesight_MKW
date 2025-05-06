@@ -34,6 +34,7 @@ from MKW_rl.analysis_metrics import (
 )
 from MKW_rl.buffer_utilities import make_buffers, resize_buffers
 from MKW_rl.map_reference_times import reference_times
+from MKW_rl.MKW_interaction import MKW_data_translate
 
 
 def learner_process_fn(
@@ -636,7 +637,9 @@ def learner_process_fn(
             if online_network.training:
                 online_network.eval()
             tau = torch.linspace(0.05, 0.95, config_copy.iqn_k)[:, None].to("cuda")
-            per_quantile_output = inferer.infer_network(rollout_results["frames"][0], rollout_results["state_float"][0], tau)
+
+            state_float = MKW_data_translate.get_1d_state_floats(rollout_results["state_float"][0], rollout_results["actions"][:5])
+            per_quantile_output = inferer.infer_network(rollout_results["frames"][0], state_float, tau)
             for i, std in enumerate(list(per_quantile_output.std(axis=0))):
                 step_stats[f"std_within_iqn_quantiles_for_action{i}"] = std
 
@@ -720,11 +723,11 @@ def learner_process_fn(
             print("")
             print(
                 "Corr mean in buffer :",
-                ((mean_in_buffer - config_copy.float_inputs_mean) / config_copy.float_inputs_std).round(1),
+                ((mean_in_buffer - MKW_data_translate.float_input_mean) / MKW_data_translate.float_input_deviation).round(1),
             )
             print(
                 "Corr std in buffer  :",
-                (std_in_buffer / config_copy.float_inputs_std).round(1),
+                (std_in_buffer / MKW_data_translate.float_input_deviation).round(1),
             )
             print("")
 

@@ -78,13 +78,7 @@ class GameInstanceHook():
             if not self.game_data_initiated:
                 self.game_data_interface.initialize_race_objects()
                 self.game_data_initiated = True
-            # self.game_data_interface.initialize_race_objects()
-            kart_pos_rot = self.game_data_interface.get_kart_position_and_rotation()
-            kart_velocity = self.game_data_interface.get_kart_velocities() # Returns dicti of 4 vectors, "external_velocity", "internal_velocity", "moving_road_velocity", and "moving_water_velocity"
-            checkpoint_data = self.game_data_interface.get_checkpoint_data()
-            driving_direction = self.game_data_interface.get_driving_direction() # likely not useful
-            item_count = self.game_data_interface.get_item_count()
-            print(kart_pos_rot, kart_velocity, checkpoint_data, driving_direction, item_count)
+
             game_data = self.game_data_interface.get_game_data_object()
             for key in game_data["kart_data"].keys():
                 value = game_data["kart_data"][key]
@@ -105,10 +99,10 @@ class GameInstanceHook():
             self.load_state_desired = False
             savestate.load_from_file(self.desired_savestate)
             self.game_data_initiated = False
-            print("Loaded new savestate:", self.desired_savestate)
+            # print("Loaded new savestate:", self.desired_savestate)
 
         if self.desired_inputs and self.desired_inputs != self.last_desired_inputs:
-            print("Applying inputs:", self.desired_inputs)
+            # print("Applying inputs:", self.desired_inputs)
             controller.set_gc_buttons(0, self.desired_inputs)
             self.last_desired_inputs = self.desired_inputs
 

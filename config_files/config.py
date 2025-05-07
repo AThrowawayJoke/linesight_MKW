@@ -25,10 +25,10 @@ from config_files.inputs_list import *
 from config_files.state_normalization import *
 from config_files.user_config import *
 
-W_downsized = 101
-H_downsized = 76
+W_downsized = 152
+H_downsized = 114
 
-run_name = "MARIO_KART_WII"
+run_name = "rMC3_test_4"
 running_speed = 80
 
 tm_engine_step_per_action = 4
@@ -37,12 +37,14 @@ n_zone_centers_in_inputs = 40
 one_every_n_zone_centers_in_inputs = 20
 n_zone_centers_extrapolate_after_end_of_map = 1000
 n_zone_centers_extrapolate_before_start_of_map = 20
+
 n_prev_actions_in_inputs = 5
+
 n_contact_material_physics_behavior_types = 4  # See contact_materials.py
 cutoff_rollout_if_race_not_finished_within_duration_f = 21_600 # 6m at 60fps
-cutoff_rollout_if_no_vcp_passed_within_duration_f = 120 # 2s at 60fps 
+cutoff_rollout_if_no_vcp_passed_within_duration_f = 240 # 4s at 60fps 
 
-temporal_mini_race_duration_f = 420
+temporal_mini_race_duration_f = 360
 temporal_mini_race_duration_actions = temporal_mini_race_duration_f // f_per_action
 oversample_long_term_steps = 40
 oversample_maximum_term_steps = 5
@@ -50,7 +52,7 @@ min_horizon_to_update_priority_actions = temporal_mini_race_duration_actions - 4
 # If mini_race_time == mini_race_duration this is the end of the minirace
 margin_to_announce_finish_meters = 700
 
-global_schedule_speed = 1
+global_schedule_speed = 1.5
 
 epsilon_schedule = [
     (0, 1),
@@ -78,14 +80,53 @@ engineered_kamikaze_reward_schedule = [
 engineered_close_to_vcp_reward_schedule = [
     (0, 0),
 ]
+# Reward A.I. for accelerating
+engineered_holding_A_reward_schedule = [
+    (0, 2),
+    (50_000, 2),
+    (300_000 * global_schedule_speed, 1),
+    (3_000_000 * global_schedule_speed, 0),
+]
+# Punish A.I. for using an item
+engineered_item_usage_reward_schedule = [
+    (0, -5),
+    (50_000, -4),
+    (300_000 * global_schedule_speed, -1),
+    (3_000_000 * global_schedule_speed, 0),
+]
+
+engineered_supergrinding_reward_schedule = [
+    (0, 0),
+]
 
 n_steps = 3
-constant_reward_per_ms = -6 / 5000
-reward_per_m_advanced_along_centerline = 1000
+constant_reward_per_f = -2
+reward_per_m_advanced_along_centerline = 1000 # total reward per lap completed
+
+# Reward functions for standard progression along the track
+final_speed_reward_as_if_duration_s = 0.00002 # times speed (80) times reward_per_m (1000) = 
+final_speed_reward_per_f_per_s = reward_per_m_advanced_along_centerline * final_speed_reward_as_if_duration_s
+
+
+expected_lap_duration_s = 30
+expected_lap_duration_f = expected_lap_duration_s * 60 # at 60 fps
+
+required_progress_per_cutoff_rollout = 0.001 # 1/1000th of a lap
+required_progress_ratio = expected_lap_duration_f / cutoff_rollout_if_no_vcp_passed_within_duration_f # 1800 / 180 = 10 frames?
+lap_completion_required_per_expected_lap_completion = required_progress_ratio * required_progress_per_cutoff_rollout # Ratio of how much of the lap we require to what we should have completed per no-progress cutoff period
+
+# 2000 per lap, 1800 frames per lap, ~1.1 reward per frame
+button_A_held_reward_per_f = reward_per_m_advanced_along_centerline / expected_lap_duration_f
+button_A_held_reward_per_s = button_A_held_reward_per_f * 60
+# Expected to spend ~30s per lap on short tracks, ~45s on longer tracks.
+# Use ratio of m advanced to determine reward
+# Unknown if adjusting for start boost would be good
+
+# Mushroom boost punishments. Mushrooms last 1.5s, and give roughly +30-40 speed
 
 float_input_dim = 36 + 7 * n_prev_actions_in_inputs
 float_hidden_dim = 256
-conv_head_output_dim = 1728
+conv_head_output_dim = 5280
 dense_hidden_dimension = 1024
 iqn_embedding_dimension = 64
 iqn_n = 8  # must be an even number because we sample tau symmetrically around 0.5
@@ -147,7 +188,7 @@ clip_grad_norm = 30
 number_memories_trained_on_between_target_network_updates = 2048
 soft_update_tau = 0.02
 
-# Helper values?
+# Helper values
 distance_between_checkpoints = 0.5
 road_width = 90  ## a little bit of margin, could be closer to 24 probably ? Don't take risks there are curvy roads
 max_allowable_distance_to_virtual_checkpoint = np.sqrt((distance_between_checkpoints / 2) ** 2 + (road_width / 2) ** 2)
@@ -176,7 +217,7 @@ use_jit = True
 # We recommend trying different values and finding the one that maximises the number of batches done per unit of time.
 # Note that each additional instance requires a separate folder containing a full Dolphin installation, and should be named sequentially.
 # For instance, if the original install is called 'dolphin_folder', installations 2 and 3 should be named 'dolphin_folder2' and 'dolphin_folder3'.
-gpu_collectors_count = 3
+gpu_collectors_count = 4
 
 # Every n batches, each collection process updates it's network to match the current Online Network as defined by DQN
 send_shared_network_every_n_batches = 10
@@ -184,9 +225,6 @@ update_inference_network_every_n_actions = 20
 
 target_self_loss_clamp_ratio = 4
 
-# Reward functions for standard progression along the track
-final_speed_reward_as_if_duration_s = 0
-final_speed_reward_per_f_per_s = reward_per_m_advanced_along_centerline * final_speed_reward_as_if_duration_s
 
 shaped_reward_dist_to_cur_vcp = -0.1
 shaped_reward_min_dist_to_cur_vcp = 2
@@ -271,67 +309,8 @@ map_cycle = []
 
 
 map_cycle += [
-    # repeat(("map5", '"My Challenges/Map5.Challenge.Gbx"', "map5_0.5m_cl.npy", True, True), 4),
-    # repeat(("map5", '"My Challenges/Map5.Challenge.Gbx"', "map5_0.5m_cl.npy", False, True), 1),
-    # repeat(("map8", '"My Challenges/Map8.Challenge.Gbx"', "map8_0.5m_cl.npy", True, True), 4),
-    # repeat(("map8", '"My Challenges/Map8.Challenge.Gbx"', "map8_0.5m_cl.npy", False, True), 1),
-    # repeat(("yosh1", '"My Challenges\Yosh1.Challenge.Gbx"', "yosh1_0.5m_clprog.npy", True, True), 4),
-    # repeat(("yosh1", '"My Challenges\Yosh1.Challenge.Gbx"', "yosh1_0.5m_clprog.npy", False, True), 1),
-    # repeat(("wallb1", "Wallbang_full.Challenge.Gbx", "Wallbang_full_0.5m_cl.npy", True, True), 4),
-    # repeat(("wallb1", "Wallbang_full.Challenge.Gbx", "Wallbang_full_0.5m_cl.npy", False, True), 1),
-    # repeat(("yosh3", '"My Challenges\Yosh3.Challenge.Gbx"', "yosh3_0.5m_clprog_cut1.npy", True, True), 4),
-    # repeat(("yosh3", '"My Challenges\Yosh3.Challenge.Gbx"', "yosh3_0.5m_clprog_cut1.npy", False, True), 1),
-    # repeat(("A06", '"Official Maps\White\A06-Obstacle.Challenge.Gbx"', "A06-Obstacle_10m_cl.npy", True, True), 4),
-    # repeat(("A06", '"Official Maps\White\A06-Obstacle.Challenge.Gbx"', "A06-Obstacle_10m_cl.npy", False, True), 1),
-    # repeat(("A07", '"Official Maps\White\A07-Race.Challenge.Gbx"', "A07-Race_10m_cl.npy", True, True), 4),
-    # repeat(("A07", '"Official Maps\White\A07-Race.Challenge.Gbx"', "A07-Race_10m_cl.npy", False, True), 1),
-    # repeat(("B01", '"Official Maps\Green\B01-Race.Challenge.Gbx"', "B01-Race_10m_cl.npy", True, True), 4),
-    # repeat(("B01", '"Official Maps\Green\B01-Race.Challenge.Gbx"', "B01-Race_10m_cl.npy", False, True), 1),
-    # repeat(("B02", '"Official Maps\Green\B02-Race.Challenge.Gbx"', "B02-Race_10m_cl.npy", True, True), 4),
-    # repeat(("B02", '"Official Maps\Green\B02-Race.Challenge.Gbx"', "B02-Race_10m_cl.npy", False, True), 1),
-    # repeat(("B03", '"Official Maps\Green\B03-Race.Challenge.Gbx"', "B03-Race_10m_cl.npy", True, True), 4),
-    # repeat(("B03", '"Official Maps\Green\B03-Race.Challenge.Gbx"', "B03-Race_10m_cl.npy", False, True), 1),
-    # repeat(("B05", '"Official Maps\Green\B05-Race.Challenge.Gbx"', "B05-Race_10m_cl.npy", True, True), 4),
-    # repeat(("B05", '"Official Maps\Green\B05-Race.Challenge.Gbx"', "B05-Race_10m_cl.npy", False, True), 1),
-    repeat(("rGV2", "linesight_savestates\\rGV2_F_FR.sav", True, True), 4),
-    repeat(("rGV2", "linesight_savestates\\rGV2_F_FR.sav", False, True), 1),
-    # repeat(("A02", f'"Official Maps\A02-Race.Challenge.Gbx"', "A02-Race_0.5m_cl2.npy", False, False), 1),
-    # repeat(("yellowmile", f'"The Yellow Mile_.Challenge.Gbx"', "YellowMile_0.5m_cl.npy", False, False), 1),
-    # repeat(("te86", f'"te 86.Challenge.Gbx"', "te86_0.5m_cl.npy", False, False), 1),
-    # repeat(("minishort037", f'"Mini-Short.037.Challenge.Gbx"', "minishort037_0.5m_cl.npy", False, False), 1),
-    # repeat(("map3", '"My Challenges\Map3_nowalls.Challenge.Gbx"', "map3_0.5m_cl.npy", False, False), 1),
-    # repeat(("wallb1", "Wallbang_full.Challenge.Gbx", "Wallbang_full_0.5m_cl.npy", False, False), 1),
-    # repeat(("hock", "ESL-Hockolicious.Challenge.Gbx", "ESL-Hockolicious_0.5m_cl2.npy", False, False), 1),
-    # repeat(("A01", f'"Official Maps\A01-Race.Challenge.Gbx"', f"A01-Race_0.5m_cl2.npy", True, True), 4),
-    # repeat(("A01", f'"Official Maps\A01-Race.Challenge.Gbx"', f"A01-Race_0.5m_cl2.npy", False, True), 1),
-    # repeat(("A02", f'"Official Maps\A02-Race.Challenge.Gbx"', f"A02-Race_0.5m_alyen.npy", True, True), 4),
-    # repeat(("A02", f'"Official Maps\A02-Race.Challenge.Gbx"', f"A02-Race_0.5m_alyen.npy", False, True), 1),
-    # repeat(("A01", f'"Official Maps\A01-Race.Challenge.Gbx"', f"A01-Race_0.5m_rollin.npy", True, True), 4),
-    # repeat(("A01", f'"Official Maps\A01-Race.Challenge.Gbx"', f"A01-Race_0.5m_rollin.npy", False, True), 1),
-    # repeat(("A11", f'"Official Maps\A11-Race.Challenge.Gbx"', f"A11-Race_0.5m_cl2.npy", True, True), 4),
-    # repeat(("A11", f'"Official Maps\A11-Race.Challenge.Gbx"', f"A11-Race_0.5m_cl2.npy", False, True), 1),
-    # repeat(("A15", f'"Official Maps\A15-Speed.Challenge.Gbx"', f"A15-Speed_0.5m_hefest.npy", True, True), 4),
-    # repeat(("A15", f'"Official Maps\A15-Speed.Challenge.Gbx"', f"A15-Speed_0.5m_hefest.npy", False, True), 1),
-    # repeat(("E02", f'"Official Maps\E02-Endurance.Challenge.Gbx"', f"E02-Endurance_0.5m_karjen.npy", True, True), 4),
-    # repeat(("E02", f'"Official Maps\E02-Endurance.Challenge.Gbx"', f"E02-Endurance_0.5m_karjen.npy", False, True), 1),
-    # repeat(("minitrial1", f'"Minitrial 1.Challenge.Gbx"', f"minitrial1_0.5m_gizmo-levon.npy", True, True), 4),
-    # repeat(("minitrial1", f'"Minitrial 1.Challenge.Gbx"', f"minitrial1_0.5m_gizmo-levon.npy", False, True), 1),
-    # repeat(("minitrial1", f'"Minitrial 1.Challenge.Gbx"', f"minitrial1_0.5m_gizmo.npy", True, True), 4),
-    # repeat(("minitrial1", f'"Minitrial 1.Challenge.Gbx"', f"minitrial1_0.5m_gizmo.npy", False, True), 1),
-    # repeat(("D06", '"Official Maps/D06-Obstacle.Challenge.Gbx"', f"D06-Obstacle_0.5m_darkbringer.npy", True, True), 4),
-    # repeat(("D06", '"Official Maps/D06-Obstacle.Challenge.Gbx"', f"D06-Obstacle_0.5m_darkbringer.npy", False, True), 1),
-    # repeat(("D06", '"Official Maps/D06-Obstacle.Challenge.Gbx"', f"D06-Obstacle_0.5m_linesight2rollin3.npy", True, True), 4),
-    # repeat(("D06", '"Official Maps/D06-Obstacle.Challenge.Gbx"', f"D06-Obstacle_0.5m_linesight2rollin3.npy", False, True), 1),
-    # repeat(("D15", '"Official Maps\D15-Endurance.Challenge.Gbx"', f"D15-Endurance_0.5m_gwenlap3.npy", True, True), 4),
-    # repeat(("D15", '"Official Maps\D15-Endurance.Challenge.Gbx"', f"D15-Endurance_0.5m_gwenlap3.npy", False, True), 1),
-    # repeat(("C12", '"Official Maps\C12-Obstacle.Challenge.Gbx"', f"C12-Obstacle_0.5m_weapon.npy", True, True), 4),
-    # repeat(("C12", '"Official Maps\C12-Obstacle.Challenge.Gbx"', f"C12-Obstacle_0.5m_weapon.npy", False, True), 1),
-    # repeat(("D15olnc", '"D15-Endurance True One Lap No Cut.Challenge.Gbx"', f"D15-OnelapNocut_0.5m_wirtual.npy", True, True), 4),
-    # repeat(("D15olnc", '"D15-Endurance True One Lap No Cut.Challenge.Gbx"', f"D15-OnelapNocut_0.5m_wirtual.npy", False, True), 1),
-    # repeat(("E03", '"E03-Endurance No Cut.Challenge.Gbx"', f"E03-Endurance_0.5m_racehansnocutlap3.npy", True, True), 4),
-    # repeat(("E03", '"E03-Endurance No Cut.Challenge.Gbx"', f"E03-Endurance_0.5m_racehansnocutlap3.npy", False, True), 1),
-    # repeat(("E03", '"E03-Endurance No Cut.Challenge.Gbx"', f"E03-Endurance_0.5m_linesight2racehans3.npy", True, True), 4),
-    # repeat(("E03", '"E03-Endurance No Cut.Challenge.Gbx"', f"E03-Endurance_0.5m_linesight2racehans3.npy", False, True), 1),
-    # repeat(("A07", f'"Official Maps/A07-Race.Challenge.Gbx"', f"A07-Race_0.5m_raceta.npy", True, True), 4),
-    # repeat(("A07", f'"Official Maps/A07-Race.Challenge.Gbx"', f"A07-Race_0.5m_raceta.npy", False, True), 1),
+    # repeat(("rGV2", "linesight_savestates\\rGV2_F_FR.sav", True, True), 4),
+    # repeat(("rGV2", "linesight_savestates\\rGV2_F_FR.sav", False, True), 1),
+    repeat(("rMC3", "linesight_savestates\\rMC3_D_MB.sav", True, True), 4),
+    repeat(("rMC3", "linesight_savestates\\rMC3_D_MB.sav", False, True), 1),
 ]

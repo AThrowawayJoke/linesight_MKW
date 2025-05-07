@@ -80,7 +80,7 @@ def fill_buffer_from_rollout_with_n_steps_rule(
             if (i < n_frames - 1 or ("race_time" not in rollout_results)) # We haven't generated any frames, or the race has not started
             else rollout_results["race_time"] - (n_frames - 2) * config_copy.f_per_action
         )"""
-        reward_into[i] += config_copy.constant_reward_per_f if rollout_results["state_float"][i]["race_data"]["race_time"] > 0.5 else 0
+        reward_into[i] += config_copy.constant_reward_per_f if i > 210 else 0 # Do not apply pain for race countdown
         reward_into[i] += (
             rollout_results["race_completion"][i] - rollout_results["race_completion"][i - 1] # meters progressed (negative if backwards)
         ) * config_copy.reward_per_m_advanced_along_centerline

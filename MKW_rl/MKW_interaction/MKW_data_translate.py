@@ -110,36 +110,36 @@ float_input_mean = [
     0.5, # A
     0.1, # B
     0.1, # Dpad Up
-    113, # StickX
-    113, # StickY
+    0, # StickX
+    0, # StickY
     0.5, # TriggerLeft
     0.5, # TriggerRight
     0.5, # A
     0.1, # B
     0.1, # Dpad Up
-    113, # StickX
-    113, # StickY
+    0, # StickX
+    0, # StickY
     0.5, # TriggerLeft
     0.5, # TriggerRight
     0.5, # A
     0.1, # B
     0.1, # Dpad Up
-    113, # StickX
-    113, # StickY
+    0, # StickX
+    0, # StickY
     0.5, # TriggerLeft
     0.5, # TriggerRight
     0.5, # A
     0.1, # B
     0.1, # Dpad Up
-    113, # StickX
-    113, # StickY
+    0, # StickX
+    0, # StickY
     0.5, # TriggerLeft
     0.5, # TriggerRight
     0.5, # A
     0.1, # B
     0.1, # Dpad Up
-    113, # StickX
-    113, # StickY
+    0, # StickX
+    0, # StickY
     0.5, # TriggerLeft
     0.5, # TriggerRight
     # End ugly ugly input listing
@@ -149,9 +149,9 @@ float_input_mean = [
     30, # mt_boost
     0, # trick_boost
     30, # shroom_boost
-    100000.0, # position.x
+    0.0, # position.x
     10000.0, # position.y
-    100000.0, # position.z
+    0.0, # position.z
     60.0, # speed_norm
     40.0, # external_velocity.x
     10.0, # external_velocity.y
@@ -175,7 +175,7 @@ float_input_mean = [
     3, # max_key_checkpoint
     2, # driving_direction
     1, # item_count
-    0.01, # start_boost_charge -- average value over an entire rollout
+    0.4, # start_boost_charge -- average value over an entire rollout
     2, # trickable_timer
     2, # surface_properties
     10, # airtime
@@ -199,22 +199,22 @@ float_input_deviation = [
     1, # A
     1, # B
     1, # Dpad Up
-    255, # StickX
-    255, # StickY
+    2, # StickX
+    2, # StickY
     1, # TriggerLeft
     1, # TriggerRight
     1, # A
     1, # B
     1, # Dpad Up
-    255, # StickX
-    255, # StickY
+    2, # StickX
+    2, # StickY
     1, # TriggerLeft
     1, # TriggerRight
     1, # A
     1, # B
     1, # Dpad Up
-    255, # StickX
-    255, # StickY
+    2, # StickX
+    2, # StickY
     1, # TriggerLeft
     1, # TriggerRight
     # End ugly ugly input list
@@ -290,7 +290,7 @@ class Network_Inputs():
 
     def get_flattened_game_data(self):
         if not self.__flat_game_data:
-            temp_game_data = self.game_data
+            temp_game_data = self.game_data.copy()
             temp_game_data["race_data"].pop("race_time", None)
             for key in temp_game_data["kart_data"].keys():
                 value = temp_game_data["kart_data"][key]

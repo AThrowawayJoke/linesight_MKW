@@ -355,7 +355,7 @@ class GameManager:
             instrumentation__grab_frame += pc4 - pc3
             frames_processed += 1
             # https://stackoverflow.com/questions/48121916/numpy-resize-rescale-image
-            resized_frame = frame_data[::6,::6]
+            resized_frame = frame_data[::4,::4]
             """if frame_counter % 240 == 0:
                 cv2.imshow("Greyscale", cv2.cvtColor(resized_frame, cv2.COLOR_BGRA2GRAY))
                 cv2.waitKey(0)""" # Image is collected properly, next step is to save to file for display.
@@ -367,13 +367,13 @@ class GameManager:
             instrumentation__convert_frame += pc5 - pc4
             game_data = self.sock.recv()
             # print("Game manager rollout() :: race time is", game_data["race_data"]["race_time"])
-            race_time = max([game_data["race_data"]["race_time"], 1e-12]) # Epsilon trick to avoid division by zero
             network_inputs = Network_Inputs(game_data, rollout_results["actions"])
             # print("Game data converted to:", network_inputs.get_flattened_game_data())
+            race_time = max([game_data["race_data"]["race_time"], 1e-12]) # Epsilon trick to avoid division by zero
 
-            distance_since_track_begin = game_data["race_data"]["race_completion_max"]
-            if distance_since_track_begin > last_progress_improvement + 0.0001: # Force the ai to improve by non-micro steps
-                # print("Game manager rollout race_completion_max value updated:", game_data["race_data"]["race_completion_max"], "Now updating frame:", frames_processed)
+            distance_since_track_begin = game_data["race_data"]["race_completion"]
+            if distance_since_track_begin > last_progress_improvement + config_copy.required_progress_per_cutoff_rollout: # Force the ai to improve by non-micro steps
+                # print("Game manager rollout race_completion_max value updated:", game_data["race_data"]["race_completion"], "Now updating frame:", frames_processed)
                 last_progress_improvement = distance_since_track_begin
                 last_progress_improvement_f = frames_processed
 
@@ -418,7 +418,7 @@ class GameManager:
                     end_race_stats[f"q_value_{i}_starting_frame"] = val
 
             rollout_results["current_checkpoint_id"].append(game_data["race_data"]["checkpoint_id"])
-            rollout_results["race_completion"].append(game_data["race_data"]["race_completion_max"])
+            rollout_results["race_completion"].append(game_data["race_data"]["race_completion"])
             rollout_results["input_w"].append(config_copy.inputs[action_idx]["A"])
             rollout_results["actions"].append(action_idx)
             rollout_results["action_was_greedy"].append(action_was_greedy)
@@ -441,7 +441,7 @@ class GameManager:
 
             # print(game_data["start_boost_charge"], " And race time is", race_time)
             # Failed to finish race in time. Note that race_time is used to prevent resetting during the countdown
-            if ((frames_processed > self.max_overall_duration_f or frames_processed > last_progress_improvement_f + self.max_minirace_duration_f) and not this_rollout_is_finished and race_time > 0.5):
+            if ((frames_processed > self.max_overall_duration_f or frames_processed > last_progress_improvement_f + self.max_minirace_duration_f) and not this_rollout_is_finished and race_time > 1.0):
                 print("This rollout has finished. Frames processed:", frames_processed, "Last progress improvement:", last_progress_improvement_f, "Race time:", race_time)
                 
                 end_race_stats["race_finished"] = False

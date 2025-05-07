@@ -6,6 +6,7 @@ It reassembles the rollout_results object into transitions, as defined in /track
 
 import math
 import random
+from turtle import distance
 
 import numpy as np
 from numba import jit
@@ -18,17 +19,18 @@ from MKW_rl.MKW_interaction.MKW_data_translate import get_1d_state_floats
 
 
 # @jit(nopython=True)
-def get_potential(state_float):
+def get_potential(speed):
 
     distance_traveled_potential = 0
-    speed = state_float["kart_data"]["speed"]
 
     if speed < 80:
-        distance_traveled_potential += -2.0
+        distance_traveled_potential += -1
     if speed > 92:
-        distance_traveled_potential += 1.0
+        distance_traveled_potential += 0.5 # wheelie speed
+    if speed > 100:
+        distance_traveled_potential += 0.5 # mt boost
     if speed > 117:
-        distance_traveled_potential += 1.0
+        distance_traveled_potential += 1.0 # shroom/trick boost
 
     return distance_traveled_potential
 
@@ -54,12 +56,8 @@ def fill_buffer_from_rollout_with_n_steps_rule(
     n_steps_max: int,
     gamma: float,
     discard_non_greedy_actions_in_nsteps: bool,
-    engineered_speedslide_reward: float,
-    engineered_neoslide_reward: float,
-    engineered_kamikaze_reward: float,
-    engineered_close_to_vcp_reward: float,
-    engineered_mushroom_reward=0.0,
-    engineered_superhopping_reward=0.0,
+    engineered_item_usage_reward=-4.0,
+    engineered_button_A_pressed_reward=2,
     engineered_supergrinding_reward=0.0,
 ):
     assert len(rollout_results["frames"]) == len(rollout_results["current_checkpoint_id"])
@@ -77,20 +75,27 @@ def fill_buffer_from_rollout_with_n_steps_rule(
 
     reward_into = np.zeros(n_frames)
     for i in range(1, n_frames): # run for each frame of the rollout
-        reward_into[i] += config_copy.constant_reward_per_ms * (
+        """reward_into[i] += config_copy.constant_reward_per_ms * (
             config_copy.f_per_action
-            if (i < n_frames - 1 or ("race_time" not in rollout_results))
+            if (i < n_frames - 1 or ("race_time" not in rollout_results)) # We haven't generated any frames, or the race has not started
             else rollout_results["race_time"] - (n_frames - 2) * config_copy.f_per_action
-        )
+        )"""
+        reward_into[i] += config_copy.constant_reward_per_f if rollout_results["state_float"][i]["race_data"]["race_time"] > 0.5 else 0
         reward_into[i] += (
-            rollout_results["race_completion"][i] - rollout_results["race_completion"][i - 1]
+            rollout_results["race_completion"][i] - rollout_results["race_completion"][i - 1] # meters progressed (negative if backwards)
         ) * config_copy.reward_per_m_advanced_along_centerline
         if i < n_frames - 1:
-            if config_copy.final_speed_reward_per_f_per_s != 0 and rollout_results["state_float"][i]["kart_data"]["speed"] > 0:
-                # car is gaining speed
+            if config_copy.final_speed_reward_per_f_per_s != 0:
+                # car is driving forward
                 reward_into[i] += config_copy.final_speed_reward_per_f_per_s * (
-                    rollout_results["state_float"]["kart_data"]["speed"] - rollout_results["state_float"][i - 1]["kart_data"]["speed"]
+                    rollout_results["state_float"][i]["kart_data"]["speed"]
                 )
+            if engineered_button_A_pressed_reward != 0 and config_copy.inputs[rollout_results["actions"][i]]["A"] > 0 and config_copy.inputs[rollout_results["actions"][i]]["TriggerRight"] == 0:
+                reward_into[i] += engineered_button_A_pressed_reward
+
+            if engineered_item_usage_reward != 0 and config_copy.inputs[rollout_results["actions"][i]]["TriggerLeft"] > 0:
+                reward_into[i] += engineered_item_usage_reward
+
             """if engineered_speedslide_reward != 0 and np.all(rollout_results["state_float"][i][25:29]):
                 # all wheels touch the ground
                 reward_into[i] += engineered_speedslide_reward * max(
@@ -133,7 +138,7 @@ def fill_buffer_from_rollout_with_n_steps_rule(
 
         state_img = rollout_results["frames"][i]
         state_float = rollout_results["state_float"][i]
-        state_potential = get_potential(rollout_results["state_float"][i])
+        state_potential = get_potential(rollout_results["state_float"][i]["kart_data"]["speed"])
 
         # Get action that was played
         action = rollout_results["actions"][i]
@@ -143,16 +148,15 @@ def fill_buffer_from_rollout_with_n_steps_rule(
         if not next_state_has_passed_finish:
             next_state_img = rollout_results["frames"][i + n_steps]
             next_state_float = rollout_results["state_float"][i + n_steps]
-            next_state_potential = get_potential(rollout_results["state_float"][i + n_steps])
+            next_state_potential = get_potential(rollout_results["state_float"][i + n_steps]["kart_data"]["speed"])
         else:
             # It doesn't matter what next_state_img and next_state_float contain, as the transition will be forced to be final
             next_state_img = state_img
             next_state_float = state_float
             next_state_potential = 0
 
-        # TODO: minor bug: either current state or next_state has incorrect actions list
         state_float = get_1d_state_floats(state_float, rollout_results["actions"])
-        next_state_float = get_1d_state_floats(next_state_float, rollout_results["actions"])
+        next_state_float = get_1d_state_floats(next_state_float, rollout_results["actions"][:-1])
 
         list_to_fill.append(
             Experience(

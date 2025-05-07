@@ -267,20 +267,18 @@ def learner_process_fn(
         # LR and weight_decay calculation
         learning_rate = utilities.from_exponential_schedule(config_copy.lr_schedule, accumulated_stats["cumul_number_memories_generated"])
         weight_decay = config_copy.weight_decay_lr_ratio * learning_rate
-        engineered_speedslide_reward = utilities.from_linear_schedule(
-            config_copy.engineered_speedslide_reward_schedule,
+        engineered_button_A_pressed_reward = utilities.from_linear_schedule(
+            config_copy.engineered_holding_A_reward_schedule,
             accumulated_stats["cumul_number_memories_generated"],
         )
-        engineered_neoslide_reward = utilities.from_linear_schedule(
-            config_copy.engineered_neoslide_reward_schedule,
+        engineered_item_usage_reward = utilities.from_linear_schedule(
+            config_copy.engineered_item_usage_reward_schedule,
             accumulated_stats["cumul_number_memories_generated"],
         )
-        engineered_kamikaze_reward = utilities.from_linear_schedule(
-            config_copy.engineered_kamikaze_reward_schedule, accumulated_stats["cumul_number_memories_generated"]
+        engineered_supergrinding_reward = utilities.from_linear_schedule(
+            config_copy.engineered_supergrinding_reward_schedule, accumulated_stats["cumul_number_memories_generated"]
         )
-        engineered_close_to_vcp_reward = utilities.from_linear_schedule(
-            config_copy.engineered_close_to_vcp_reward_schedule, accumulated_stats["cumul_number_memories_generated"]
-        )
+ 
         gamma = utilities.from_linear_schedule(config_copy.gamma_schedule, accumulated_stats["cumul_number_memories_generated"])
 
         # ===============================================
@@ -310,14 +308,9 @@ def learner_process_fn(
         #   WRITE SINGLE RACE RESULTS TO TENSORBOARD
         # ===============================================
         race_stats_to_write = {
-            f"race_time_ratio_{map_name}": end_race_stats["race_time_for_ratio"] / (rollout_duration * 1000),
-            f"explo_race_time_{map_status}_{map_name}" if is_explo else f"eval_race_time_{map_status}_{map_name}": end_race_stats[
-                "race_time"
-            ]
-            / 1000,
-            f"explo_race_finished_{map_status}_{map_name}" if is_explo else f"eval_race_finished_{map_status}_{map_name}": end_race_stats[
-                "race_finished"
-            ],
+            f"race_time_ratio_{map_name}": end_race_stats["race_time_for_ratio"] / (rollout_duration),
+            f"explo_race_time_{map_status}_{map_name}" if is_explo else f"eval_race_time_{map_status}_{map_name}": end_race_stats["race_time"],
+            f"explo_race_finished_{map_status}_{map_name}" if is_explo else f"eval_race_finished_{map_status}_{map_name}": end_race_stats["race_finished"],
             f"mean_action_gap_{map_name}": -(
                 np.array(rollout_results["q_values"]) - np.array(rollout_results["q_values"]).max(axis=1, initial=None).reshape(-1, 1)
             ).mean(),
@@ -340,12 +333,12 @@ def learner_process_fn(
 
         if end_race_stats["race_finished"]:
             race_stats_to_write[f"{'explo' if is_explo else 'eval'}_race_time_finished_{map_status}_{map_name}"] = (
-                end_race_stats["race_time"] / 1000
+                end_race_stats["race_time"]
             )
             if not is_explo:
                 accumulated_stats["rolling_mean_ms"][map_name] = (
-                    accumulated_stats["rolling_mean_ms"].get(map_name, config_copy.cutoff_rollout_if_race_not_finished_within_duration_ms)
-                    * 0.9
+                    accumulated_stats["rolling_mean_ms"].get(map_name, config_copy.cutoff_rollout_if_race_not_finished_within_duration_f)
+                    * 17.8
                     + end_race_stats["race_time"] * 0.1
                 )
         if (
@@ -353,16 +346,16 @@ def learner_process_fn(
             and end_race_stats["race_finished"]
             and end_race_stats["race_time"] < 1.02 * accumulated_stats["rolling_mean_ms"][map_name]
         ):
-            race_stats_to_write[f"eval_race_time_robust_{map_status}_{map_name}"] = end_race_stats["race_time"] / 1000
+            race_stats_to_write[f"eval_race_time_robust_{map_status}_{map_name}"] = end_race_stats["race_time"]
             if map_name in reference_times:
                 for reference_time_name in ["author", "gold"]:
                     if reference_time_name in reference_times[map_name]:
                         reference_time = reference_times[map_name][reference_time_name]
                         race_stats_to_write[f"eval_ratio_{map_status}_{reference_time_name}_{map_name}"] = (
-                            100 * (end_race_stats["race_time"] / 1000) / reference_time
+                            100 * (end_race_stats["race_time"]) / reference_time
                         )
                         race_stats_to_write[f"eval_agg_ratio_{map_status}_{reference_time_name}"] = (
-                            100 * (end_race_stats["race_time"] / 1000) / reference_time
+                            100 * (end_race_stats["race_time"]) / reference_time
                         )
 
         for i in [0]:
@@ -438,11 +431,13 @@ def learner_process_fn(
                 config_copy.n_steps,
                 gamma,
                 config_copy.discard_non_greedy_actions_in_nsteps,
-                engineered_speedslide_reward,
-                engineered_neoslide_reward,
-                engineered_kamikaze_reward,
-                engineered_close_to_vcp_reward,
+                engineered_item_usage_reward,
+                engineered_button_A_pressed_reward,
+                engineered_supergrinding_reward,
             )
+            """engineered_button_A_pressed_reward,
+                engineered_item_usage_reward,
+                engineered_supergrinding_reward,"""
 
             accumulated_stats["cumul_number_memories_generated"] += number_memories_added_train + number_memories_added_test
             shared_steps.value = accumulated_stats["cumul_number_memories_generated"]

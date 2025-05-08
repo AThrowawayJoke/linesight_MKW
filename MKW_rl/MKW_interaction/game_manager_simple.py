@@ -130,9 +130,10 @@ class GameManager:
                 'powershell -executionPolicy bypass -command "& {'
                 f" $process = start-process -FilePath '{config_copy.dolphin_base_path}{dolphin_process_number}\\{config_copy.windows_dolphinexe_filename}'" # Launch .exe file
                 " -PassThru -ArgumentList " # Assign arguments for .exe
-                f'\'--video_backend="{config_copy.video_backend}" --config=Dolphin.Core.EmulationSpeed={config_copy.game_speed} --script MKW_rl\\MKW_interaction\\game_instance_hook.py --batch --no-python-subinterpreters --exec="{config_copy.game_path}"\';'
+                f'\'--video_backend="{config_copy.video_backend}" --config=Dolphin.Core.EmulationSpeed={config_copy.game_speed} --script MKW_rl\\MKW_interaction\\game_instance_hook.py --no-python-subinterpreters --exec="{config_copy.game_path}"\';'
                 ' echo exit $process.id}"' # push process_id to stdout to read later
             )
+            # --batch
             # print(launch_string)
             
             self.dolphin_process_id = int(subprocess.check_output(launch_string).decode().split("\r\n")[1]) # locate the pid from the program
@@ -224,7 +225,7 @@ class GameManager:
             self.max_allowable_distance_to_real_checkpoint,
         ) = map_loader.sync_virtual_and_real_checkpoints(zone_centers, savestate_path)"""
 
-    def rollout(self, exploration_policy: Callable, savestate_path: str, update_network: Callable):
+    def rollout(self, exploration_policy: Callable, savestate_path: str, update_network: Callable, last_loop_finished: bool):
         """
         exploration_policy: Function that returns ratio of exploration vs exploitation runs
         savestate_path: file path to current track to run
@@ -262,8 +263,6 @@ class GameManager:
             "state_float": [], # specifics about game data we want ai to know
             "furthest_zone_idx": 0,
         }
-
-        last_progress_improvement_f = 0
 
         if (self.sock is None) or (not self.registered): # Game was not connected to the program
             assert self.msgtype_response_to_wakeup_TMI is None
@@ -312,24 +311,29 @@ class GameManager:
 
         distance_since_track_begin = 0.99 # Beginning lap completion percentage is usually about 0.999, depending on the track
         last_progress_improvement = 0.99
+        last_progress_improvement_f = 0
+
         sim_state_car_gear_and_wheels = None
 
         game_data = None
         
-        # We have to load the savestate we want at the start of the loop because that seems reasonable
-        """# print("loading savestate")
-        if self.latest_map_path_requested != savestate_path:
+        # Load the savestate if we have not done so (we are on the wrong map)
+        # print("loading savestate")
+        if self.latest_map_path_requested != savestate_path or last_loop_finished:
             # We have to load the savestate we want
-            print("loading savestate")
+            print("Loading savestate")
             self.sock.send([False, False, computed_action, savestate_path])
             self.latest_map_path_requested = savestate_path # this seems backwards... TODO
         else:
-            # Send signal to restart race and get us to new starting point
-            self.sock.send([False, False, computed_action, "race_restart"])"""
+            # Send signal to restart race manually instead of reloading savestate to save overhead
+            # Note that this may run into some serious issues regarding load times and reward functions
+            # These issues also will be hard to debug... oh joy. IDK if this is worth it xd
+            print("Restarting manually")
+            self.sock.send([False, False, computed_action, config_copy.restart_race_command])
         
         
-        self.sock.send([False, False, computed_action, savestate_path])
-        self.latest_map_path_requested = savestate_path # this seems backwards... TODO
+        # self.sock.send([False, False, computed_action, savestate_path])
+        # self.latest_map_path_requested = savestate_path # this seems backwards... TODO
 
         while not this_rollout_is_finished:
             """
@@ -450,8 +454,9 @@ class GameManager:
 
             # print(game_data["start_boost_charge"], " And race time is", race_time)
             # Failed to finish race in time. Note that race_time is used to prevent resetting during the countdown
-            if ((frames_processed > self.max_overall_duration_f or frames_processed > last_progress_improvement_f + self.max_minirace_duration_f) and not this_rollout_is_finished and race_time > 1.0):
+            if ((frames_processed > self.max_overall_duration_f or frames_processed > last_progress_improvement_f + self.max_minirace_duration_f) and not this_rollout_is_finished and race_time > 1.5):
                 print("This rollout has finished. Frames processed:", frames_processed, "Last progress improvement:", last_progress_improvement_f, "Race time:", race_time)
+                print("Failed at:", last_progress_improvement, "Current completion:", game_data["race_data"]["race_completion"])
                 
                 end_race_stats["race_finished"] = False
                 end_race_stats["race_time_for_ratio"] = race_time + 3

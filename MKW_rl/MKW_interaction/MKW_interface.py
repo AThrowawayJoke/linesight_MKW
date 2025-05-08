@@ -101,7 +101,7 @@ class MKW_Interface():
 		BOOST_PANEL_OR_RAMP = 0x100
 		TRICKABLE = 0x800
 		"""
-		return is_trickable
+		return is_offroad
         
 	def get_checkpoint_data(self):
 		return {

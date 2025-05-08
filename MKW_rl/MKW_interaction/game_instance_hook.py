@@ -16,6 +16,7 @@ import inspect
 source_file_path = inspect.getfile(inspect.currentframe())
 
 from MKW_rl.MKW_interaction.MKW_data_translate import *
+from mkw_scripts.Modules.mkw_classes.race_manager import RaceState
 
 HOST = "127.0.0.1"
 
@@ -35,8 +36,63 @@ class GameInstanceHook():
         self.load_state_desired = False
         self.desired_savestate = None
         self.last_game_data = None
+        self.restarting_race = False
+        self.restarting_race_timer = 0
 
     def framedrawn_handler(self, width, height, data):
+        if self.restarting_race:
+            if self.restarting_race_timer < 3:
+                self.desired_inputs = {
+                    "A": False,
+                    "B": False,
+                    "Up": False,
+                    "StickX": 0,
+                    "StickY": 0,
+                    "TriggerLeft": 0,
+                    "TriggerRight": 0,
+                    "Start": True,
+                }
+                self.restarting_race_timer += 1
+            elif self.restarting_race_timer >= 3 and self.restarting_race_timer < 7:
+                self.desired_inputs = {
+                    "A": False,
+                    "B": False,
+                    "Up": False,
+                    "StickX": 0,
+                    "StickY": -1,
+                    "TriggerLeft": 0,
+                    "TriggerRight": 0,
+                    "Start": False,
+                }
+                self.restarting_race_timer += 1
+            elif self.restarting_race_timer >= 7 and self.restarting_race_timer < 12:
+                self.desired_inputs = {
+                    "A": True,
+                    "B": False,
+                    "Up": False,
+                    "StickX": 0,
+                    "StickY": 0,
+                    "TriggerLeft": 0,
+                    "TriggerRight": 0,
+                    "Start": False,
+                }
+                self.restarting_race_timer += 1
+            else:
+                self.restarting_race_timer += 1
+                # Reload game objects awaiting countdown start
+                self.game_data_interface.initialize_race_objects()
+                if self.game_data_interface.race_mgr.state() == RaceState.COUNTDOWN:
+                    print("Restarting via countdown timer")
+                    self.restarting_race = False
+                    self.restarting_race_timer = 0
+                # Skipped 1000 frames attempting to let the game load the race, so we continue instead.
+                if self.restarting_race_timer > 1000:
+                    # This behavior is likely unwanted but if it never runs (which I believe to be the case) then it never runs
+                    print("ERROR: Restarting due to frame rule, track was not loaded within 1000 frames")
+                    self.restarting_race = False
+                    self.restarting_race_timer = 0
+            return
+        
         # Wait for data necessary to determine what we want to do
         self.current_unprocessed_frame = (height, width, data)
 
@@ -54,7 +110,20 @@ class GameInstanceHook():
             self.desired_inputs = new_inputs
 
         if load_state_request is not None:
-            # print("Got a request for savestate load:", socket_data[3])
+            # Funky way of avoiding loading a savestate for every rollout (bad for performance)
+            if socket_data[3] == config_copy.restart_race_command:
+                self.restarting_race = True
+                self.desired_inputs = {
+                    "A": False,
+                    "B": False,
+                    "Up": False,
+                    "StickX": 0,
+                    "StickY": 0,
+                    "TriggerLeft": 0,
+                    "TriggerRight": 0,
+                    "Start": True,
+                }
+                return
             self.load_state_desired = True
             self.desired_savestate = socket_data[3]
             if frame_data_request:

@@ -147,6 +147,15 @@ inputs = [
         "StickY": 0,
         "TriggerLeft": 0,
     },
+    {  # 6 Drift full right item # TODO: Adjust for individual tracks based on item usage
+        "StickX": 1,
+        "A": True,
+        "TriggerRight": 1,
+        "TriggerLeft": 1,
+        "B": False,
+        "Up": False,
+        "StickY": 0,
+    },
     {  # 9 Trick straight
         "Up": True,
         "A": True,
@@ -174,11 +183,11 @@ inputs = [
         "TriggerLeft": 0,
         "TriggerRight": 0
     },
-    {  # 12 No Accel (Start boost) # Note that stick is in default position
+    {  # 12 No Accel full right (Start boost/start slide) # 
         "A": False,
         "B": False,
         "Up": False,
-        "StickX": 0,
+        "StickX": 1,
         "StickY": 0,
         "TriggerLeft": 0,
         "TriggerRight": 0

@@ -52,12 +52,12 @@ def buffer_collate_function(batch):
     (
         state_img,
         state_float,
-        state_potential,
+        # state_potential,
         action,
         rewards,
         next_state_img,
         next_state_float,
-        next_state_potential,
+        # next_state_potential,
         gammas,
         terminal_actions,
         n_steps,
@@ -67,12 +67,12 @@ def buffer_collate_function(batch):
             [
                 "state_img",
                 "state_float",
-                "state_potential",
+                # "state_potential",
                 "action",
                 "rewards",
                 "next_state_img",
                 "next_state_float",
-                "next_state_potential",
+                # "next_state_potential",
                 "gammas",
                 "terminal_actions",
                 "n_steps",
@@ -110,8 +110,8 @@ def buffer_collate_function(batch):
 
     rewards = np.take_along_axis(rewards, possibly_reduced_n_steps[:, None] - 1, axis=1).squeeze(-1)
 
-    rewards += np.where(terminal, 0, gammas * next_state_potential)
-    rewards -= state_potential
+    # rewards += np.where(terminal, 0, gammas * next_state_potential)
+    # rewards -= state_potential
 
     state_img, state_float, action, rewards, next_state_img, next_state_float, gammas = tuple(
         map(

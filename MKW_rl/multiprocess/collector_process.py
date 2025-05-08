@@ -75,6 +75,7 @@ def collector_process_fn(
     # game_instance_manager.update_current_zone_idx(0, zone_centers, np.zeros(3))
 
     time_since_last_queue_push = time.perf_counter()
+    last_loop_finished = False
     for loop_number in count(1):
         importlib.reload(config_copy)
 
@@ -118,10 +119,15 @@ def collector_process_fn(
             exploration_policy=inferer.get_exploration_action,
             savestate_path=map_path,
             update_network=update_network,
+            last_loop_finished=last_loop_finished,
         )
         rollout_end_time = time.perf_counter()
         rollout_duration = rollout_end_time - rollout_start_time
         rollout_results["worker_time_in_rollout_percentage"] = rollout_duration / (time.perf_counter() - time_since_last_queue_push)
+        if end_race_stats["race_finished"]:
+            last_loop_finished = True
+        else:
+            last_loop_finished = False
         time_since_last_queue_push = time.perf_counter()
         print("", flush=True)
 

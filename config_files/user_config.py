@@ -44,7 +44,7 @@ windows_dolphinexe_filename = "Dolphin.exe"
 # Options include D3D, D3D12 (both Windows exclusive), OGL, Vulkan, Null (Game will not be rendered), and SoftwareRenderer
 video_backend = "OGL"
 
-# Dolphin emulation speed. Usually set to unlimited (0.0), but can be set to 0.5 for 50% or 1.0 for 100% and so forth.
+# Dolphin emulation speed. Usually set to unlimited (0.0), but can be set to 0.5 for 100% or 1.0 for 200% and so forth. I do not know why it is multiplied by 2, just be aware that it is.
 game_speed = "0.0"
 
 """

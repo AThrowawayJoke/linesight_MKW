@@ -25,11 +25,12 @@ from config_files.inputs_list import *
 from config_files.state_normalization import *
 from config_files.user_config import *
 
-W_downsized = 152
+W_downsized = 153
 H_downsized = 114
 
-run_name = "rMC3_test_4"
+run_name = "rMC3_manual_restart_test"
 running_speed = 80
+restart_race_command = "restart_race"
 
 tm_engine_step_per_action = 4
 f_per_action = tm_engine_step_per_action
@@ -44,7 +45,7 @@ n_contact_material_physics_behavior_types = 4  # See contact_materials.py
 cutoff_rollout_if_race_not_finished_within_duration_f = 21_600 # 6m at 60fps
 cutoff_rollout_if_no_vcp_passed_within_duration_f = 240 # 4s at 60fps 
 
-temporal_mini_race_duration_f = 360
+temporal_mini_race_duration_f = 420
 temporal_mini_race_duration_actions = temporal_mini_race_duration_f // f_per_action
 oversample_long_term_steps = 40
 oversample_maximum_term_steps = 5
@@ -89,9 +90,9 @@ engineered_holding_A_reward_schedule = [
 ]
 # Punish A.I. for using an item
 engineered_item_usage_reward_schedule = [
-    (0, -5),
-    (50_000, -4),
-    (300_000 * global_schedule_speed, -1),
+    (0, -20),
+    (50_000, -20),
+    (300_000 * global_schedule_speed, -2),
     (3_000_000 * global_schedule_speed, 0),
 ]
 
@@ -99,24 +100,60 @@ engineered_supergrinding_reward_schedule = [
     (0, 0),
 ]
 
+engineered_start_boost_charge_reward_schedule = [
+    (0, 0),
+]
+
+"""
+it is recommended to work with standardized values for the inputs of the neural network.
+
+The same recommendation holds for the output of the neural network.
+
+Since the neural network outputs returns, you want your returns to be somewhat normalized.
+What does it mean?
+
+It means that when the agent plays well in a favorable scenario, returns should be somewhere around 2.
+If the agent plays bad in an unfavorable scenario, returns should be somewhere around -2.
+If the agent plays neither good neither bad, returns should be around 0.
+
+For Trackmania, we could say that
+"playing well" is being able to achieve 300km/h on average.  We can calculate the theoretical returns obtained by the agent and make sure it's around 2.
+"playing bad" is achieving 100km/h on average. We can calculate the theoretical returns obtained by the agent and make sure it's around -2.
+
+This is where these magic numbers come from:
+constant_reward_per_ms = -6 / 5000
+reward_per_m_advanced_along_centerline = 5 / 500
+"""
+
 n_steps = 3
-constant_reward_per_f = -2
-reward_per_m_advanced_along_centerline = 1000 # total reward per lap completed
+
+# -4 / time_per_lap * lap_count * actions_per_second
+expected_lap_duration_s = 28
+
+expected_lap_duration_per_action = expected_lap_duration_s * (60 / f_per_action) # at 60 fps
+average_lap_increment_per_action = 1 / expected_lap_duration_per_action
+total_second_increment_expected = 3 / (expected_lap_duration_s * 3 / 7)
+
+constant_reward_per_f = -2 / (7 * (60 / f_per_action))
+# added_race_completion * 2
+# expected_lap_count * 3 / 7 # how many 7-second increments per lap
+# total_distance_traveled = 3 
+# total_distance_traveled / (expected_lap_duration_s * 3 / 7) = distance_we_should_progress in 7 seconds
+# distance_we_should_progress_ratio (4)
+
+reward_per_m_advanced_along_centerline = 4 / total_second_increment_expected
 
 # Reward functions for standard progression along the track
 final_speed_reward_as_if_duration_s = 0.00002 # times speed (80) times reward_per_m (1000) = 
 final_speed_reward_per_f_per_s = reward_per_m_advanced_along_centerline * final_speed_reward_as_if_duration_s
 
 
-expected_lap_duration_s = 30
-expected_lap_duration_f = expected_lap_duration_s * 60 # at 60 fps
-
-required_progress_per_cutoff_rollout = 0.001 # 1/1000th of a lap
-required_progress_ratio = expected_lap_duration_f / cutoff_rollout_if_no_vcp_passed_within_duration_f # 1800 / 180 = 10 frames?
+required_progress_per_cutoff_rollout = 0.005 # 5/1000ths of a lap
+required_progress_ratio = expected_lap_duration_per_action / cutoff_rollout_if_no_vcp_passed_within_duration_f # 1800 / 180 = 10 frames?
 lap_completion_required_per_expected_lap_completion = required_progress_ratio * required_progress_per_cutoff_rollout # Ratio of how much of the lap we require to what we should have completed per no-progress cutoff period
 
 # 2000 per lap, 1800 frames per lap, ~1.1 reward per frame
-button_A_held_reward_per_f = reward_per_m_advanced_along_centerline / expected_lap_duration_f
+button_A_held_reward_per_f = reward_per_m_advanced_along_centerline / expected_lap_duration_per_action
 button_A_held_reward_per_s = button_A_held_reward_per_f * 60
 # Expected to spend ~30s per lap on short tracks, ~45s on longer tracks.
 # Use ratio of m advanced to determine reward
@@ -189,8 +226,8 @@ number_memories_trained_on_between_target_network_updates = 2048
 soft_update_tau = 0.02
 
 # Helper values
-distance_between_checkpoints = 0.5
-road_width = 90  ## a little bit of margin, could be closer to 24 probably ? Don't take risks there are curvy roads
+distance_between_checkpoints = 300
+road_width = 5000  ## a little bit of margin, could be closer to 24 probably ? Don't take risks there are curvy roads
 max_allowable_distance_to_virtual_checkpoint = np.sqrt((distance_between_checkpoints / 2) ** 2 + (road_width / 2) ** 2)
 
 # Restart intervals in case of lost connection or game crash
@@ -215,9 +252,9 @@ use_jit = True
 # gpu_collectors_count is the number of Dolphin instances that will be launched in parallel.
 # It is recommended that users adjust this number depending on the performance of their machine.
 # We recommend trying different values and finding the one that maximises the number of batches done per unit of time.
-# Note that each additional instance requires a separate folder containing a full Dolphin installation, and should be named sequentially.
+# Note that each additional instance requires a separate folder containing a full Dolphin installation, and should be named sequentially. (Dolphin's game save files cannot be shared between instances)
 # For instance, if the original install is called 'dolphin_folder', installations 2 and 3 should be named 'dolphin_folder2' and 'dolphin_folder3'.
-gpu_collectors_count = 4
+gpu_collectors_count = 1
 
 # Every n batches, each collection process updates it's network to match the current Online Network as defined by DQN
 send_shared_network_every_n_batches = 10
@@ -267,6 +304,8 @@ map_cycle = [
     repeat(("map5", '"My Challenges/Map5.Challenge.Gbx"', "map5_0.5m_cl.npy", False, True), 1),
 ]
 """
+
+# TODO: Add expected race times to balance return (goal is ranging from 2 for good run to -2 for bad, 0 being average (i.e expected) time)
 
 nadeo_maps_to_train_and_test = [
     "A01-Race",

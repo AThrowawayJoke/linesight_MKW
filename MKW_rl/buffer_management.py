@@ -19,18 +19,14 @@ from MKW_rl.MKW_interaction.MKW_data_translate import get_1d_state_floats
 
 
 # @jit(nopython=True)
-def get_potential(speed):
+def get_potential(state_float):
 
     distance_traveled_potential = 0
-
-    if speed < 80:
-        distance_traveled_potential += -1
-    if speed > 92:
-        distance_traveled_potential += 0.5 # wheelie speed
-    if speed > 100:
-        distance_traveled_potential += 0.5 # mt boost
-    if speed > 117:
-        distance_traveled_potential += 1.0 # shroom/trick boost
+    # distance_traveled_potential += config_copy.constant_reward_per_f
+    """distance_traveled_potential = (
+        state_float["race_data"]["race_completion"] - (state_float["race_data"]["race_completion_max"]) # meters of backwards-progression
+    ) * config_copy.reward_per_m_advanced_along_centerline"""
+    # distance_traveled_potential += (state_float["kart_data"]["speed"] - 70) / config_copy.average_lap_increment_per_action
 
     return distance_traveled_potential
 
@@ -80,12 +76,12 @@ def fill_buffer_from_rollout_with_n_steps_rule(
             if (i < n_frames - 1 or ("race_time" not in rollout_results)) # We haven't generated any frames, or the race has not started
             else rollout_results["race_time"] - (n_frames - 2) * config_copy.f_per_action
         )"""
-        reward_into[i] += config_copy.constant_reward_per_f if i > 210 else 0 # Do not apply pain for race countdown
+        reward_into[i] += config_copy.constant_reward_per_f if i > 2 * (60 / config_copy.f_per_action) else 0 # Do not apply pain for 2s during race countdown
         reward_into[i] += (
             rollout_results["race_completion"][i] - rollout_results["race_completion"][i - 1] # meters progressed (negative if backwards)
         ) * config_copy.reward_per_m_advanced_along_centerline
         if i < n_frames - 1:
-            if config_copy.final_speed_reward_per_f_per_s != 0:
+            """if config_copy.final_speed_reward_per_f_per_s != 0:
                 # car is driving forward
                 reward_into[i] += config_copy.final_speed_reward_per_f_per_s * (
                     rollout_results["state_float"][i]["kart_data"]["speed"]
@@ -96,7 +92,7 @@ def fill_buffer_from_rollout_with_n_steps_rule(
             if engineered_item_usage_reward != 0 and config_copy.inputs[rollout_results["actions"][i]]["TriggerLeft"] > 0:
                 reward_into[i] += engineered_item_usage_reward
 
-            """if engineered_speedslide_reward != 0 and np.all(rollout_results["state_float"][i][25:29]):
+            if engineered_speedslide_reward != 0 and np.all(rollout_results["state_float"][i][25:29]):
                 # all wheels touch the ground
                 reward_into[i] += engineered_speedslide_reward * max(
                     0.0,
@@ -138,7 +134,7 @@ def fill_buffer_from_rollout_with_n_steps_rule(
 
         state_img = rollout_results["frames"][i]
         state_float = rollout_results["state_float"][i]
-        state_potential = get_potential(rollout_results["state_float"][i]["kart_data"]["speed"])
+        state_potential = get_potential(rollout_results["state_float"][i])
 
         # Get action that was played
         action = rollout_results["actions"][i]
@@ -148,7 +144,7 @@ def fill_buffer_from_rollout_with_n_steps_rule(
         if not next_state_has_passed_finish:
             next_state_img = rollout_results["frames"][i + n_steps]
             next_state_float = rollout_results["state_float"][i + n_steps]
-            next_state_potential = get_potential(rollout_results["state_float"][i + n_steps]["kart_data"]["speed"])
+            next_state_potential = get_potential(rollout_results["state_float"][i + n_steps])
         else:
             # It doesn't matter what next_state_img and next_state_float contain, as the transition will be forced to be final
             next_state_img = state_img

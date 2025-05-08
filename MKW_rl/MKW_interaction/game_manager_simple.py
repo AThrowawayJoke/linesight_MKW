@@ -1,5 +1,4 @@
 from multiprocessing import process
-from turtle import distance
 from config_files import config_copy, user_config
 
 import math
@@ -318,7 +317,17 @@ class GameManager:
         game_data = None
         
         # We have to load the savestate we want at the start of the loop because that seems reasonable
-        print("loading savestate")
+        """# print("loading savestate")
+        if self.latest_map_path_requested != savestate_path:
+            # We have to load the savestate we want
+            print("loading savestate")
+            self.sock.send([False, False, computed_action, savestate_path])
+            self.latest_map_path_requested = savestate_path # this seems backwards... TODO
+        else:
+            # Send signal to restart race and get us to new starting point
+            self.sock.send([False, False, computed_action, "race_restart"])"""
+        
+        
         self.sock.send([False, False, computed_action, savestate_path])
         self.latest_map_path_requested = savestate_path # this seems backwards... TODO
 
@@ -445,7 +454,7 @@ class GameManager:
                 print("This rollout has finished. Frames processed:", frames_processed, "Last progress improvement:", last_progress_improvement_f, "Race time:", race_time)
                 
                 end_race_stats["race_finished"] = False
-                end_race_stats["race_time_for_ratio"] = race_time
+                end_race_stats["race_time_for_ratio"] = race_time + 3
                 end_race_stats["race_time"] = config_copy.cutoff_rollout_if_race_not_finished_within_duration_f
                 rollout_results["race_time"] = race_time
 
@@ -463,7 +472,7 @@ class GameManager:
                 this_rollout_is_finished = True
             elif rollout_results["race_completion"][-1] >= 4:
                 end_race_stats["race_finished"] = True
-                end_race_stats["race_time_for_ratio"] = race_time
+                end_race_stats["race_time_for_ratio"] = race_time + 3
                 end_race_stats["race_time"] = race_time
                 rollout_results["race_time"] = race_time
 

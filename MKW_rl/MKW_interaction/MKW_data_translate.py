@@ -48,6 +48,13 @@ class vec3:
 
     def length_xz(self) -> float:
         return math.sqrt(self.x**2 + self.z**2)
+    
+@dataclass
+class quatf:
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
+    w: float = 0.0
 
 class SurfaceProperties():
     def __init__(self, value):

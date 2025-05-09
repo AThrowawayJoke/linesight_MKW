@@ -4,7 +4,7 @@ within directly callable functions in leiu of the instance manager program handl
 """
 
 from mkw_scripts.Modules.mkw_classes import vec3 as hookvec3
-from mkw_scripts.Modules.mkw_classes import mat34 as hookmat34
+from mkw_scripts.Modules.mkw_classes import quatf as hookquatf
 
 import mkw_scripts.Modules.mkw_utils as mkw_utils
 from mkw_scripts.Modules.mkw_classes import ExactTimer, Timer
@@ -156,9 +156,9 @@ class MKW_Interface():
 	
 	def convert_vec3(self, vector: hookvec3):
 		return vec3(vector.x, vector.y, vector.z)
-
-	def convert_mat34(self, values: hookmat34):
-		return mat34(values.e00, values.e01, values.e02, values.e03, values.e10, values.e11, values.e12, values.e13, values.e20, values.e21, values.e22, values.e23)
+	
+	def convert_quatf(self, valueS: hookquatf):
+		return quatf()
 	
 	def get_boost_states(self) -> Boosts:
 		boosts = Boosts()
@@ -173,7 +173,7 @@ class MKW_Interface():
 	def get_kart_data(self) -> Kart_Data:
 		kart_data = Kart_Data()
 		kart_data["position"] = self.convert_vec3(self.vehicle_physics.position())
-		# kart_data["part_rotation"] = self.convert_mat34(self.kart_body.kart_part_rotation())
+		kart_data["rotation"] = self.convert_quatf(self.vehicle_physics.main_rotation())
 		kart_data["speed"] = self.vehicle_physics.speed_norm()
 		kart_data["external_velocity"] = self.convert_vec3(self.vehicle_physics.external_velocity())
 		kart_data["internal_velocity"] = self.convert_vec3(self.vehicle_physics.internal_velocity())

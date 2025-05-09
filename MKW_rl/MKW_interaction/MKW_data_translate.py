@@ -77,7 +77,7 @@ class Boosts(TypedDict, total=False):
 
 class Kart_Data(TypedDict, total=False):
     position: vec3
-    part_rotation: mat34
+    rotation: quatf
     angle: float
 
     external_velocity: vec3

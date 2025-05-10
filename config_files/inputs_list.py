@@ -35,11 +35,11 @@ For now (e.g. until I get around to testing it), it is recommended to keep the n
 Therefore, when selecting inputs, consider the following:
     1. Soft-drifting charges a mini-turbo at the fastest rate while turning the least amount. This value is -3 and 3 and should be present as an option in the inputs for optimized times.
     2. Using an item rarely needs to use more than one input for Time Trials, as you can simply match what should be pressed when a given track's shroom strat happens.
-    3. only the inputs deviating from the default state need to be present (i.e the 'X' and 'Y' buttons are never used, so they are omitted), however all used buttons should be present in all states.
-    4. Non-accelerating inputs (used for start alignments) are useful, even if only for the first ~1.5 seconds of a run so long as it's not playing DK Summit (Slowdown for double cut strat).
+    3. Only the inputs deviating from the default state need to be present (i.e the 'X' and 'Y' buttons are never used, so they are omitted), however all used buttons should be present in all states.
+    4. At least one non-accelerating input should be present to allow the A.I to learn the start boost without burning out.
     5. More stick options will likely give small improvements to times, although human WRs rarely use them, if at all. Remains to be tested.
         (Note that the base game simplifies down to 15 unique values for steering, ranging from -7 to 7)
-    6. It is useful on certain tracks to cancel wheelies with D-pad down, on tracks such as rPB, rSL, and rBC.
+    6. It may be useful on certain tracks to cancel wheelies with D-pad down, on tracks such as rPB, rSL, and rBC, but I forgot where I found this information.
 """
 
 """ 
@@ -64,21 +64,24 @@ GCInputs type list
     TriggerRight: float
     
 Stick value conversion for GCInputs:
-    (14) 205-255 (+7) Full Right
-    (13) 197-204 (+6)
-    (12) 188-196 (+5)
-    (11) 179-187 (+4)
-    (10) 170-178 (+3) Soft Right
-    (9) 161-169 (+2)
-    (8) 152-160 (+1)
-    (7) 113-151 (+0) Neutral
-    (6) 105-112 (-1)
-    (5) 96-104 (-2)
-    (4) 87-95 (-3) Soft Left
-    (3) 78-86 (-4)
-    (2) 69-77 (-5)
-    (1) 60-68(-6)
-    (0) 0-59 (-7) Full Left
+    (14) 205-255 (+7) > 1 - Full Right
+    (13) 197-204 (+6) > 0.57
+    (12) 188-196 (+5) > 0.5
+    (11) 179-187 (+4) > 0.43
+    (10) 170-178 (+3) > 0.36 - Soft Right
+    (9) 161-169 (+2) > 0.29
+    (8) 152-160 (+1) > 0.22
+    (7) 113-151 (+0) > 0 - Neutral
+    (6) 105-112 (-1) > -0.156
+    (5) 96-104 (-2) > -0.22
+    (4) 87-95 (-3) > -0.29 - Soft Left
+    (3) 78-86 (-4) > -0.36
+    (2) 69-77 (-5) > -0.43
+    (1) 60-68 (-6) > -0.5
+    (0) 0-59 (-7) > -1 - Full Left
+
+Note that all of the values must use the range of -1 to 1 for the inputs list. (I learned this the hard way lol)
+Chart based on this document: https://docs.google.com/document/d/e/2PACX-1vSM96Kykn6ILXsJD42gD3T71GJ_tiUGtHE8afTjqXX-Y2sxrXfHWuSNPHplKPt0IEvv0BNsHemluEIS/pub#h.jhvf61tw73t8
 """
 
 defaultInputState: GCInputs = {
@@ -122,7 +125,7 @@ inputs = [
     },
     {  # 3 Drift slight left
         "A": True,
-        "StickX": -0.45,
+        "StickX": -0.36,
         "TriggerRight": 1,
         "B": False,
         "Up": False,
@@ -131,7 +134,7 @@ inputs = [
     },
     {  # 4 Drift slight right
         "A": True,
-        "StickX": 0.45,
+        "StickX": 0.36,
         "TriggerRight": 1,
         "B": False,
         "Up": False,

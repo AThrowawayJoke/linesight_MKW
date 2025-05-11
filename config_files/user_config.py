@@ -31,7 +31,7 @@ linux_launch_game_path = "path_to_be_filled_only_if_on_linux"
 windows_TMLoader_profile_name = "default"
 
 # Location of the game file for MKW
-game_path = "C:\\Games\\Dolphin-x64\\Games\\MKW_Copies\\Mario_Kart_Wii.rvz"
+game_path = "C:\\Games\\Dolphin-x64\\Games\\MKW_Copies\\Mario_Kart_Wii\\DATA\\sys\\main.dol"
 
 # If on windows, path where the Dolphin exe can be found.
 # Usually Path(os.path.expanduser("~") / "AppData" / "Local" / "TMLoader" / "TMLoader.exe"

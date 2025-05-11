@@ -198,14 +198,16 @@ class MKW_Interface():
 		race_data["driving_direction"] = self.get_driving_direction()
 		race_data["item_count"] = self.get_item_count()
 
-		# temp_timer: Timer = self.race_mgr_player.lap_finish_time()
 		race_data["race_time"] = self.timer.minutes() * 60 + self.timer.seconds() + self.timer.milliseconds() / 1000
-		#ExactTimer(temp_timer.minutes(), temp_timer.seconds(), temp_timer.milliseconds()).to_float() # peak efficiency
+		race_data["state"] = self.race_mgr.state().value
 
 		# race_data["item_type"] = self.get_item_type()
 		return race_data
 
 	def get_game_data_object(self) -> Game_Data:
+		# Note that the order here and within the called functions is important, as that is the order in which they are flattened.
+		# Thus, MKW_data_translate must match the ordering, especially in the float_input_mean and float_input_std variables.
+		# If I find a way to remove those variables I will remove them.
 		game_data = Game_Data()
 		game_data["boost_data"] = self.get_boost_states()
 		game_data["kart_data"] = self.get_kart_data()

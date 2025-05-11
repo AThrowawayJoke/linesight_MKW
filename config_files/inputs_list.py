@@ -33,7 +33,7 @@ Thus, too many inputs will complicate the network and at some point slow down tr
 For now (e.g. until I get around to testing it), it is recommended to keep the number of input combinations to below 20.
 
 Therefore, when selecting inputs, consider the following:
-    1. Soft-drifting charges a mini-turbo at the fastest rate while turning the least amount. This value is -3 and 3 and should be present as an option in the inputs for optimized times.
+    1. Soft-drifting charges a mini-turbo at the fastest rate while turning the least amount. This value is -3 and 3 for left and right respectively and should be present as an option in the inputs for optimized times.
     2. Using an item rarely needs to use more than one input for Time Trials, as you can simply match what should be pressed when a given track's shroom strat happens.
     3. Only the inputs deviating from the default state need to be present (i.e the 'X' and 'Y' buttons are never used, so they are omitted), however all used buttons should be present in all states.
     4. At least one non-accelerating input should be present to allow the A.I to learn the start boost without burning out.

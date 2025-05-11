@@ -28,7 +28,7 @@ from config_files.user_config import *
 W_downsized = 153
 H_downsized = 114
 
-run_name = "rMC3_manual_restart_test"
+run_name = "rMC3_test_vcps"
 running_speed = 80
 restart_race_command = "restart_race"
 
@@ -53,7 +53,9 @@ min_horizon_to_update_priority_actions = temporal_mini_race_duration_actions - 4
 # If mini_race_time == mini_race_duration this is the end of the minirace
 margin_to_announce_finish_meters = 700
 
-global_schedule_speed = 1.5
+global_schedule_speed = 1
+
+constant_reward_per_action = -2 / (7 * (60 / f_per_action))
 
 epsilon_schedule = [
     (0, 1),
@@ -79,7 +81,11 @@ engineered_kamikaze_reward_schedule = [
     (0, 0),
 ]
 engineered_close_to_vcp_reward_schedule = [
-    (0, 0),
+    (0, 1 * -constant_reward_per_action),
+    (50_000, 1 * -constant_reward_per_action),
+    (500_000 * global_schedule_speed, 0.5 * -constant_reward_per_action),
+    (3_000_000 * global_schedule_speed, 0.1 * -constant_reward_per_action),
+    (5_000_000 * global_schedule_speed, 0 * -constant_reward_per_action),
 ]
 # Reward A.I. for accelerating
 engineered_holding_A_reward_schedule = [
@@ -134,7 +140,6 @@ expected_lap_duration_per_action = expected_lap_duration_s * (60 / f_per_action)
 average_lap_increment_per_action = 1 / expected_lap_duration_per_action
 total_second_increment_expected = 3 / (expected_lap_duration_s * 3 / 7)
 
-constant_reward_per_f = -2 / (7 * (60 / f_per_action))
 # added_race_completion * 2
 # expected_lap_count * 3 / 7 # how many 7-second increments per lap
 # total_distance_traveled = 3 
@@ -148,7 +153,7 @@ final_speed_reward_as_if_duration_s = 0.00002 # times speed (80) times reward_pe
 final_speed_reward_per_f_per_s = reward_per_m_advanced_along_centerline * final_speed_reward_as_if_duration_s
 
 
-required_progress_per_cutoff_rollout = 0.005 # 5/1000ths of a lap
+required_progress_per_cutoff_rollout = 0.002 # 5/1000ths of a lap
 required_progress_ratio = expected_lap_duration_per_action / cutoff_rollout_if_no_vcp_passed_within_duration_f # 1800 / 180 = 10 frames?
 lap_completion_required_per_expected_lap_completion = required_progress_ratio * required_progress_per_cutoff_rollout # Ratio of how much of the lap we require to what we should have completed per no-progress cutoff period
 
@@ -161,7 +166,9 @@ button_A_held_reward_per_s = button_A_held_reward_per_f * 60
 
 # Mushroom boost punishments. Mushrooms last 1.5s, and give roughly +30-40 speed
 
-float_input_dim = 36 + 7 * n_prev_actions_in_inputs
+# Numper of game_data points + 7 (number of input buttons in 1 input) * number of previous actions + 3 (3d point) * n zone centers
+float_input_dim = 42 + 7 * n_prev_actions_in_inputs + 3 * n_zone_centers_in_inputs
+
 float_hidden_dim = 256
 conv_head_output_dim = 5280
 dense_hidden_dimension = 1024
@@ -181,9 +188,9 @@ number_times_single_memory_is_used_before_discard = 32  # 32 // 4
 # Schedule how many state-action pairs we save in memory at specific sections of training
 memory_size_schedule = [
     (0, (50_000, 20_000)),
-    (5_000_000 * global_schedule_speed, (100_000, 75_000)),
-    (8_000_000 * global_schedule_speed, (400_000, 300_000)),
-    (12_000_000 * global_schedule_speed, (1_100_000, 750_000)),
+    (500_000 * global_schedule_speed, (100_000, 75_000)),
+    (1_000_000 * global_schedule_speed, (400_000, 300_000)),
+    (2_000_000 * global_schedule_speed, (1_100_000, 750_000)),
 ]
 lr_schedule = [
     (0, 1e-3),
@@ -227,14 +234,15 @@ soft_update_tau = 0.02
 
 # Helper values
 distance_between_checkpoints = 300
-road_width = 5000  ## a little bit of margin, could be closer to 24 probably ? Don't take risks there are curvy roads
+# Old values were 0.5 dbc and 90 rw. I have set the road_width to roughly match those values' ratios (90/0.5 = 180, 20000/300 = 66.67) taking 'closer to 24' into account (24/0.5 = 48)
+road_width = 30000  ## a little bit of margin, could be closer to 24 probably ? Don't take risks there are curvy roads
 max_allowable_distance_to_virtual_checkpoint = np.sqrt((distance_between_checkpoints / 2) ** 2 + (road_width / 2) ** 2)
 
 # Restart intervals in case of lost connection or game crash
 timeout_during_run_ms = 10_100
 timeout_between_runs_ms = 600_000_000
 tmi_protection_timeout_s = 500
-game_reboot_interval = 3600 * 6  # In seconds
+game_reboot_interval = 3600 * 12  # In seconds
 
 # Do not save runs until after we start getting roughly human-level results (i.e. prevent saving 1000s of extra bad runs)
 frames_before_save_best_runs = 1_500_000
@@ -254,7 +262,7 @@ use_jit = True
 # We recommend trying different values and finding the one that maximises the number of batches done per unit of time.
 # Note that each additional instance requires a separate folder containing a full Dolphin installation, and should be named sequentially. (Dolphin's game save files cannot be shared between instances)
 # For instance, if the original install is called 'dolphin_folder', installations 2 and 3 should be named 'dolphin_folder2' and 'dolphin_folder3'.
-gpu_collectors_count = 1
+gpu_collectors_count = 4
 
 # Every n batches, each collection process updates it's network to match the current Online Network as defined by DQN
 send_shared_network_every_n_batches = 10
@@ -266,8 +274,8 @@ target_self_loss_clamp_ratio = 4
 shaped_reward_dist_to_cur_vcp = -0.1
 shaped_reward_min_dist_to_cur_vcp = 2
 shaped_reward_max_dist_to_cur_vcp = 25
-engineered_reward_min_dist_to_cur_vcp = 5
-engineered_reward_max_dist_to_cur_vcp = 25
+engineered_reward_min_dist_to_cur_vcp = 1200 # max reward
+engineered_reward_max_dist_to_cur_vcp = 5000 # minimum reward
 shaped_reward_point_to_vcp_ahead = 0
 
 threshold_to_save_all_runs_ms = -1
@@ -350,6 +358,6 @@ map_cycle = []
 map_cycle += [
     # repeat(("rGV2", "linesight_savestates\\rGV2_F_FR.sav", True, True), 4),
     # repeat(("rGV2", "linesight_savestates\\rGV2_F_FR.sav", False, True), 1),
-    repeat(("rMC3", "linesight_savestates\\rMC3_D_MB.sav", True, True), 4),
-    repeat(("rMC3", "linesight_savestates\\rMC3_D_MB.sav", False, True), 1),
+    repeat(("rMC3", "linesight_savestates\\rMC3_D_MB_hitbox.sav", "rMC3.npy", True, True), 4),
+    repeat(("rMC3", "linesight_savestates\\rMC3_D_MB_hitbox.sav", "rMC3.npy", False, True), 1),
 ]

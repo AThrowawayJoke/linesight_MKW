@@ -6,7 +6,6 @@ It reassembles the rollout_results object into transitions, as defined in /track
 
 import math
 import random
-from turtle import distance
 
 import numpy as np
 from numba import jit
@@ -21,17 +20,15 @@ from MKW_rl.MKW_interaction.MKW_data_translate import get_1d_state_floats
 # @jit(nopython=True)
 def get_potential(state_float):
 
-    distance_traveled_potential = 0
+    # distance_traveled_potential = 0
     # distance_traveled_potential += config_copy.constant_reward_per_f
     """distance_traveled_potential = (
         state_float["race_data"]["race_completion"] - (state_float["race_data"]["race_completion_max"]) # meters of backwards-progression
     ) * config_copy.reward_per_m_advanced_along_centerline"""
     # distance_traveled_potential += (state_float["kart_data"]["speed"] - 70) / config_copy.average_lap_increment_per_action
 
-    return distance_traveled_potential
-
-    """# https://people.eecs.berkeley.edu/~pabbeel/cs287-fa09/readings/NgHaradaRussell-shaping-ICML1999.pdf
-    vector_vcp_to_vcp_further_ahead = state_float[65:68] - state_float[62:65] # hard-coded, adjust to use dictionary? state_float class?
+    # https://people.eecs.berkeley.edu/~pabbeel/cs287-fa09/readings/NgHaradaRussell-shaping-ICML1999.pdf
+    vector_vcp_to_vcp_further_ahead = state_float["relative_zone_centers"][1] - state_float["relative_zone_centers"][0]
     vector_vcp_to_vcp_further_ahead_normalized = vector_vcp_to_vcp_further_ahead / np.linalg.norm(vector_vcp_to_vcp_further_ahead)
     # current vcp is target ahead of us, previous vcp is what we've just passed
     # Punish ai for being farther away from current vcp by ratio of how far we are from previous vcp
@@ -40,9 +37,9 @@ def get_potential(state_float):
         config_copy.shaped_reward_dist_to_cur_vcp
         * max(
             config_copy.shaped_reward_min_dist_to_cur_vcp,
-            min(config_copy.shaped_reward_max_dist_to_cur_vcp, np.linalg.norm(state_float[62:65])), # max of 25
+            min(config_copy.shaped_reward_max_dist_to_cur_vcp, np.linalg.norm(state_float["relative_zone_centers"][0])), # max of 25
         )
-    ) + (config_copy.shaped_reward_point_to_vcp_ahead * (vector_vcp_to_vcp_further_ahead_normalized[2] - 1))"""
+    ) + (config_copy.shaped_reward_point_to_vcp_ahead * (vector_vcp_to_vcp_further_ahead_normalized[2] - 1))
 
 
 def fill_buffer_from_rollout_with_n_steps_rule(
@@ -55,8 +52,10 @@ def fill_buffer_from_rollout_with_n_steps_rule(
     engineered_item_usage_reward=-4.0,
     engineered_button_A_pressed_reward=2,
     engineered_supergrinding_reward=0.0,
+    engineered_close_to_vcp_reward=0,
+    engineered_start_boost_reward=0.019,
 ):
-    assert len(rollout_results["frames"]) == len(rollout_results["current_checkpoint_id"])
+    assert len(rollout_results["frames"]) == len(rollout_results["current_zone_idx"])
     n_frames = len(rollout_results["frames"])
 
     number_memories_added_train = 0
@@ -76,11 +75,20 @@ def fill_buffer_from_rollout_with_n_steps_rule(
             if (i < n_frames - 1 or ("race_time" not in rollout_results)) # We haven't generated any frames, or the race has not started
             else rollout_results["race_time"] - (n_frames - 2) * config_copy.f_per_action
         )"""
-        reward_into[i] += config_copy.constant_reward_per_f if i > 2 * (60 / config_copy.f_per_action) else 0 # Do not apply pain for 2s during race countdown
-        reward_into[i] += (
-            rollout_results["race_completion"][i] - rollout_results["race_completion"][i - 1] # meters progressed (negative if backwards)
-        ) * config_copy.reward_per_m_advanced_along_centerline
-        if i < n_frames - 1:
+        if rollout_results["state_float"][i]["race_data"]["state"] == 2: # Only apply these rewards during the actual race (Not race finished, not during countdown timer)
+            reward_into[i] += config_copy.constant_reward_per_action
+            reward_into[i] += (
+                rollout_results["race_completion"][i] - rollout_results["race_completion"][i - 1] # meters progressed (negative if backwards)
+            ) * config_copy.reward_per_m_advanced_along_centerline / 1.5
+            if i < n_frames - 1:
+                if engineered_close_to_vcp_reward != 0:
+                    # TODO: Recalculate this value to match -0.5, 0.5 over 7 seconds
+                    reward_into[i] += engineered_close_to_vcp_reward * np.interp(max(config_copy.engineered_reward_min_dist_to_cur_vcp,
+                        min(config_copy.engineered_reward_max_dist_to_cur_vcp, np.linalg.norm(rollout_results["state_float"][i]["relative_zone_centers"][0])),
+                    ),
+                    [config_copy.engineered_reward_min_dist_to_cur_vcp, config_copy.engineered_reward_max_dist_to_cur_vcp],
+                    [1, -1]) # normalizing to 1, -1 using np.interp so when we multiply by engineered reward we are reasonable
+        if i < n_frames - 1: # apply these rewards even during countdown
             """if config_copy.final_speed_reward_per_f_per_s != 0:
                 # car is driving forward
                 reward_into[i] += config_copy.final_speed_reward_per_f_per_s * (
@@ -109,12 +117,13 @@ def fill_buffer_from_rollout_with_n_steps_rule(
                 and rollout_results["actions"][i] <= 2
                 or np.sum(rollout_results["state_float"][i][25:29]) <= 1
             ):
-                reward_into[i] += engineered_kamikaze_reward
-            if engineered_close_to_vcp_reward != 0:
-                reward_into[i] += engineered_close_to_vcp_reward * max(
-                    config_copy.engineered_reward_min_dist_to_cur_vcp,
-                    min(config_copy.engineered_reward_max_dist_to_cur_vcp, np.linalg.norm(rollout_results["state_float"][i][62:65])),
-                )"""
+                reward_into[i] += engineered_kamikaze_reward"""
+
+            if (engineered_start_boost_reward != 0
+                and rollout_results["state_float"][i]["race_data"]["state"] == 1 # only reward start boost during countdown
+                and rollout_results["state_float"][i]["start_boost_charge"] > rollout_results["state_float"][i - 1]["start_boost_charge"]):
+                reward_into[i] += engineered_start_boost_reward if rollout_results["state_float"][i]["start_boost_charge"] < 0.95 else -engineered_start_boost_reward
+
     for i in range(n_frames - 1):  # Loop over all frames that were generated
         # Switch memory buffer sometimes
         if random.random() < 0.1:

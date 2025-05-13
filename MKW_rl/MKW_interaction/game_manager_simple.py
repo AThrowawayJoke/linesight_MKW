@@ -324,7 +324,7 @@ class GameManager:
         self.last_rollout_crashed = False
 
         frames_processed = 0 # track how long this rollout has been going
-        current_zone_idx = config_copy.n_zone_centers_extrapolate_before_start_of_map
+        current_zone_idx = 0
 
         # Insert values for the start of a race
         computed_action = None
@@ -361,7 +361,7 @@ class GameManager:
             # Send signal to restart race manually instead of reloading savestate to save overhead
             # Note that this may run into some serious issues regarding load times and reward functions
             # These issues also will be hard to debug... oh joy. IDK if this is worth it xd
-            print("Restarting manually")
+            # print("Restarting manually")
             self.sock.send([False, False, computed_action, config_copy.restart_race_command])
         
         

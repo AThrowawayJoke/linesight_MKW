@@ -18,7 +18,7 @@ username = "tmnf_account_username"  # Username of the TMNF account
 target_python_link_path = Path(os.path.expanduser("~")) / "Documents" / "TMInterface" / "Plugins" / "Python_Link.as"
 
 # Typically path(os.path.expanduser("~")) / "Documents" / "TrackMania"
-dolphin_base_path = Path(os.path.expanduser("~")) / "Documents" / "Python" / "MKW_linesight" / "dolphin-scripting"
+dolphin_base_path = Path(os.path.expanduser("~")) / "Documents" / "Python" / "MKW_linesight" / "dolphin-stable"
 
 # Communication port for the first TMInterface instance that will be launched.
 # If using multiple instances, the ports used will be base_tmi_port + 1, +2, +3, etc...
@@ -35,7 +35,7 @@ game_path = "C:\\Games\\Dolphin-x64\\Games\\MKW_Copies\\Mario_Kart_Wii\\DATA\\sy
 
 # If on windows, path where the Dolphin exe can be found.
 # Usually Path(os.path.expanduser("~") / "AppData" / "Local" / "TMLoader" / "TMLoader.exe"
-windows_dolphinexe_path = Path(os.path.expanduser("~")) / "Documents" / "Python" / "MKW_linesight" / "dolphin-scripting" / "Dolphin.exe"
+windows_dolphinexe_path = Path(os.path.expanduser("~")) / "Documents" / "Python" / "MKW_linesight" / "dolphin-stable" / "Dolphin.exe"
 
 # Name of the Dolphin executable to run
 windows_dolphinexe_filename = "Dolphin.exe"
@@ -52,4 +52,4 @@ This simplistic method of training on one track at a time will remain until I re
 In the meantime, I need to make sure it works and then make sure the exploration to exploitation ratio is correct
 """
 # Path to savestate that starts a new time trial on a specific track
-track_start_state_path = dolphin_base_path / "linesight_savestates" / "rGV2_F_FR.sav"
+track_start_state_path = dolphin_base_path / "linesight_savestates" / "rGV2_F_FR_hitbox.sav"

@@ -33,6 +33,11 @@ def get_potential(state_float):
     # current vcp is target ahead of us, previous vcp is what we've just passed
     # Punish ai for being farther away from current vcp by ratio of how far we are from previous vcp
     # -0.1 * max(2, min(25, previous_vector_vc_dist)) + (0 * n)
+    return (-config_copy.constant_reward_per_action / 2) * np.interp(max(config_copy.engineered_reward_min_dist_to_cur_vcp,
+            min(config_copy.engineered_reward_max_dist_to_cur_vcp, np.linalg.norm(state_float["relative_zone_centers"][0])),
+        ),
+        [config_copy.engineered_reward_min_dist_to_cur_vcp, config_copy.engineered_reward_max_dist_to_cur_vcp],
+        [0.5, -1])
     return (
         config_copy.shaped_reward_dist_to_cur_vcp
         * max(
@@ -79,15 +84,15 @@ def fill_buffer_from_rollout_with_n_steps_rule(
             reward_into[i] += config_copy.constant_reward_per_action
             reward_into[i] += (
                 rollout_results["race_completion"][i] - rollout_results["race_completion"][i - 1] # meters progressed (negative if backwards)
-            ) * config_copy.reward_per_m_advanced_along_centerline / 1.5
+            ) * config_copy.reward_per_m_advanced_along_centerline
             if i < n_frames - 1:
                 if engineered_close_to_vcp_reward != 0:
-                    # TODO: Recalculate this value to match -0.5, 0.5 over 7 seconds
                     reward_into[i] += engineered_close_to_vcp_reward * np.interp(max(config_copy.engineered_reward_min_dist_to_cur_vcp,
-                        min(config_copy.engineered_reward_max_dist_to_cur_vcp, np.linalg.norm(rollout_results["state_float"][i]["relative_zone_centers"][0])),
-                    ),
-                    [config_copy.engineered_reward_min_dist_to_cur_vcp, config_copy.engineered_reward_max_dist_to_cur_vcp],
-                    [1, -1]) # normalizing to 1, -1 using np.interp so when we multiply by engineered reward we are reasonable
+                            min(config_copy.engineered_reward_max_dist_to_cur_vcp, np.linalg.norm(rollout_results["state_float"][i]["relative_zone_centers"][0])),
+                        ),
+                        [config_copy.engineered_reward_min_dist_to_cur_vcp, config_copy.engineered_reward_max_dist_to_cur_vcp],
+                        [0.5, -1]
+                    ) # normalizing to 1, -1 using np.interp so when we multiply by engineered reward we are reasonable
         if i < n_frames - 1: # apply these rewards even during countdown
             """if config_copy.final_speed_reward_per_f_per_s != 0:
                 # car is driving forward
@@ -120,9 +125,12 @@ def fill_buffer_from_rollout_with_n_steps_rule(
                 reward_into[i] += engineered_kamikaze_reward"""
 
             if (engineered_start_boost_reward != 0
-                and rollout_results["state_float"][i]["race_data"]["state"] == 1 # only reward start boost during countdown
-                and rollout_results["state_float"][i]["start_boost_charge"] > rollout_results["state_float"][i - 1]["start_boost_charge"]):
-                reward_into[i] += engineered_start_boost_reward if rollout_results["state_float"][i]["start_boost_charge"] < 0.95 else -engineered_start_boost_reward
+                and rollout_results["state_float"][i]["race_data"]["state"] == 1): # only reward start boost during countdown
+                reward_into[i] += engineered_start_boost_reward * (rollout_results["state_float"][i]["start_boost_charge"] - .3)
+                """if rollout_results["state_float"][i]["start_boost_charge"] > rollout_results["state_float"][i - 1]["start_boost_charge"]:
+                    reward_into[i] += engineered_start_boost_reward if rollout_results["state_float"][i]["start_boost_charge"] < 0.95 else -engineered_start_boost_reward
+                else:
+                    reward_into[i] += -engineered_start_boost_reward if rollout_results["state_float"][i]["start_boost_charge"] <= 0.925 else 0"""
 
     for i in range(n_frames - 1):  # Loop over all frames that were generated
         # Switch memory buffer sometimes

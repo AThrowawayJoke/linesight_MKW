@@ -278,6 +278,9 @@ def learner_process_fn(
         engineered_supergrinding_reward = utilities.from_linear_schedule(
             config_copy.engineered_supergrinding_reward_schedule, accumulated_stats["cumul_number_memories_generated"]
         )
+        engineered_close_to_vcp_reward = utilities.from_linear_schedule(
+            config_copy.engineered_close_to_vcp_reward_schedule, accumulated_stats["cumul_number_memories_generated"]
+        )
  
         gamma = utilities.from_linear_schedule(config_copy.gamma_schedule, accumulated_stats["cumul_number_memories_generated"])
 
@@ -434,6 +437,7 @@ def learner_process_fn(
                 engineered_item_usage_reward,
                 engineered_button_A_pressed_reward,
                 engineered_supergrinding_reward,
+                engineered_close_to_vcp_reward,
             )
             """engineered_button_A_pressed_reward,
                 engineered_item_usage_reward,

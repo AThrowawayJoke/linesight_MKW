@@ -22,7 +22,7 @@ HOST = "127.0.0.1"
 
 class GameInstanceHook():
     def __init__(self, port=8478):
-        self.desired_inputs = None
+        self.desired_inputs = {}
         self.last_desired_inputs = {}
         self.current_unprocessed_frame = None
         self.resized = None
@@ -171,10 +171,8 @@ class GameInstanceHook():
             self.game_data_initiated = False
             # print("Loaded new savestate:", self.desired_savestate)
 
-        if self.desired_inputs and self.desired_inputs != self.last_desired_inputs:
-            # print("Applying inputs:", self.desired_inputs)
-            controller.set_gc_buttons(0, self.desired_inputs)
-            self.last_desired_inputs = self.desired_inputs
+        controller.set_gc_buttons(0, self.desired_inputs)
+        # self.last_desired_inputs = self.desired_inputs
 
     def register(self):
         print("Initialize connection to Dolphin ")

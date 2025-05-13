@@ -9,6 +9,7 @@ class RaceState(Enum):
     COUNTDOWN = 1  # including starting pan
     RACE = 2
     FINISHED_RACE = 3
+    FINISHED_RACEv2 = 4
 
 class RaceManager:
     def __init__(self):

@@ -28,7 +28,7 @@ from config_files.user_config import *
 W_downsized = 153
 H_downsized = 114
 
-run_name = "anti_crash_test_2"
+run_name = "it_inputs_now"
 running_speed = 80
 restart_race_command = "restart_race"
 
@@ -36,7 +36,7 @@ tm_engine_step_per_action = 4
 f_per_action = tm_engine_step_per_action
 n_zone_centers_in_inputs = 40
 one_every_n_zone_centers_in_inputs = 20
-n_zone_centers_extrapolate_after_end_of_map = 20
+n_zone_centers_extrapolate_after_end_of_map = 1000
 n_zone_centers_extrapolate_before_start_of_map = 20
 
 n_prev_actions_in_inputs = 5
@@ -356,6 +356,8 @@ map_cycle = []
 
 
 map_cycle += [
+    # repeat(("rGV2_auto", "linesight_savestates\\rGV2_auto_hitbox_charge2.sav", "rGV2.npy", True, True), 4),
+    # repeat(("rGV2_auto", "linesight_savestates\\rGV2_auto_hitbox_charge2.sav", "rGV2.npy", False, True), 1),
     repeat(("rGV2", "linesight_savestates\\rGV2_F_FR_hitbox.sav", "rGV2.npy", True, True), 4),
     repeat(("rGV2", "linesight_savestates\\rGV2_F_FR_hitbox.sav", "rGV2.npy", False, True), 1),
     # repeat(("rMC3", "linesight_savestates\\rMC3_D_MB_hitbox.sav", "rMC3.npy", True, True), 4),

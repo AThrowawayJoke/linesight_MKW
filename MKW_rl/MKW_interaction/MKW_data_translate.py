@@ -22,6 +22,7 @@ class RaceState(Enum):
     COUNTDOWN = 1  # not including starting pan # yes the original comment is wrong.
     RACE = 2
     FINISHED_RACE = 3
+    FINISHED_RACEv2 = 4
 
 @dataclass
 class mat34:

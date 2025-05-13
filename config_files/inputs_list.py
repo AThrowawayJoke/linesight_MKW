@@ -123,27 +123,6 @@ inputs = [
         "StickY": 0,
         "TriggerLeft": 0,
     },
-    {  # 5 Drift straight
-        "A": True,
-        "TriggerRight": 1,
-        "B": False,
-        "Up": False,
-        "StickX": 0,
-        "StickY": 0,
-        "TriggerLeft": 0,
-    },
-    {  # 9 Trick straight
-        "Up": True,
-        "A": True,
-        "B": False,
-        "StickX": 0,
-        "StickY": 0,
-        "TriggerLeft": 0,
-        "TriggerRight": 0
-    },
-]
-
-"""
     {  # 3 Drift slight left
         "A": True,
         "StickX": -0.36,
@@ -162,6 +141,15 @@ inputs = [
         "StickY": 0,
         "TriggerLeft": 0,
     },
+    {  # 5 Drift straight
+        "A": True,
+        "TriggerRight": 1,
+        "B": False,
+        "Up": False,
+        "StickX": 0,
+        "StickY": 0,
+        "TriggerLeft": 0,
+    },
     {  # 6 Drift full right item # TODO: Adjust for individual tracks based on item usage
         "StickX": 1,
         "A": True,
@@ -171,6 +159,27 @@ inputs = [
         "Up": False,
         "StickY": 0,
     },
+    {  # 9 Trick drift full right
+        "Up": True,
+        "A": True,
+        "B": False,
+        "StickX": 1,
+        "StickY": 0,
+        "TriggerLeft": 0,
+        "TriggerRight": 1
+    },
+    {  # 12 No accel full right (Start boost/start slide) # 
+        "A": True,
+        "B": False,
+        "Up": False,
+        "StickX": 1,
+        "StickY": 0,
+        "TriggerLeft": 0,
+        "TriggerRight": 0
+    },
+]
+
+"""
     {  # 7 Full left # Note that inputs #7 and #8 may not be necessary for all tracks, but are useful for alignment after wheelies.
         "StickX": -1,
         "A": True,

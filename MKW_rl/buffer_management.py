@@ -126,11 +126,11 @@ def fill_buffer_from_rollout_with_n_steps_rule(
 
             if (engineered_start_boost_reward != 0
                 and rollout_results["state_float"][i]["race_data"]["state"] == 1): # only reward start boost during countdown
-                reward_into[i] += engineered_start_boost_reward * (rollout_results["state_float"][i]["start_boost_charge"] - .3)
-                """if rollout_results["state_float"][i]["start_boost_charge"] > rollout_results["state_float"][i - 1]["start_boost_charge"]:
+                # reward_into[i] += engineered_start_boost_reward * (rollout_results["state_float"][i]["start_boost_charge"] - .3)
+                if rollout_results["state_float"][i]["start_boost_charge"] > rollout_results["state_float"][i - 1]["start_boost_charge"]:
                     reward_into[i] += engineered_start_boost_reward if rollout_results["state_float"][i]["start_boost_charge"] < 0.95 else -engineered_start_boost_reward
                 else:
-                    reward_into[i] += -engineered_start_boost_reward if rollout_results["state_float"][i]["start_boost_charge"] <= 0.925 else 0"""
+                    reward_into[i] += -engineered_start_boost_reward if rollout_results["state_float"][i]["start_boost_charge"] <= 0.925 else 0
 
     for i in range(n_frames - 1):  # Loop over all frames that were generated
         # Switch memory buffer sometimes

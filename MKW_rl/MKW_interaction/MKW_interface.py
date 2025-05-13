@@ -158,7 +158,7 @@ class MKW_Interface():
 		return vec3(vector.x, vector.y, vector.z)
 	
 	def convert_quatf(self, valueS: hookquatf):
-		return quatf()
+		return quatf(valueS.x, valueS.y, valueS.z, valueS.w)
 	
 	def get_boost_states(self) -> Boosts:
 		boosts = Boosts()

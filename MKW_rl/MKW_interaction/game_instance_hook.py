@@ -1,15 +1,10 @@
 from dolphin import event, gui, controller, savestate # type: ignore
 # Note that the program runs from the main linesight folder
 from MKW_rl.MKW_interaction.MKW_interface import MKW_Interface
-import time
 import os
 import sys
 sys.path.append(os.path.expanduser("~") + "\\AppData\\Local\\programs\\python\\python312\\lib\\site-packages")
 
-import psutil
-from typing import List
-import numpy
-import cv2
 from multiprocessing.connection import Listener
 from config_files import config_copy
 import inspect
@@ -187,23 +182,12 @@ class GameInstanceHook():
                 self.conn = self.listener.accept()
                 success = True
             except OSError:
-                self.port += 1
+                self.port += 1 # Expert level port finding code
                 fails += 1
                 if fails > 10:
                     print("Error connecting to program.")
                     success = True # just let the puppy crash lol
         print("Connected accepted from:", self.listener.last_accepted)
-
-# Possibly send a packet through a known channel, which then establishes a separate connection?
-# Or start at a known port and iterate until you find a clear one
-def is_dolphin_process(process: psutil.Process) -> bool:
-    try:
-        return "Dolphin" in process.name()
-    except psutil.NoSuchProcess:
-        return False
-
-def get_dolphin_pids() -> List[int]:
-    return [process.pid for process in psutil.process_iter() if is_dolphin_process(process)]
 
 # Use base tmi port in an attempt to find the right port lol
 mymanager = GameInstanceHook(config_copy.base_tmi_port) #  + len(get_dolphin_pids()) - 1

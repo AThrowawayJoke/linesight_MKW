@@ -507,9 +507,11 @@ class GameManager:
 
             # print(game_data["start_boost_charge"], " And race time is", race_time)
             # Failed to finish race in time. Note that race_time is used to prevent resetting during the countdown
-            if ((frames_processed > self.max_overall_duration_f or frames_processed > last_progress_improvement_f + self.max_minirace_duration_f) and not this_rollout_is_finished and race_time > 1.5):
-                print("This rollout has finished. Frames processed:", frames_processed, "Last progress improvement:", last_progress_improvement_f, "Race time:", race_time)
-                print("Failed at:", current_zone_idx, "Current completion:", rollout_results["furthest_zone_idx"])
+            if ((frames_processed > self.max_overall_duration_f or frames_processed > last_progress_improvement_f + self.max_minirace_duration_f) 
+                and not this_rollout_is_finished and race_time > 2.5):
+                print("This rollout has finished. Frames processed:", frames_processed, "Last progress improvement:", last_progress_improvement_f,
+                    "Race completion:", game_data["race_data"]["race_completion_max"])
+                print("Failed at:", current_zone_idx, "Max completion:", rollout_results["furthest_zone_idx"])
                 
                 end_race_stats["race_finished"] = False
                 end_race_stats["race_time_for_ratio"] = race_time + 3
@@ -528,9 +530,10 @@ class GameManager:
                 end_race_stats["tmi_protection_cutoff"] = False
             
                 this_rollout_is_finished = True
-            elif rollout_results["race_completion"][-1] >= 4:
+            elif game_data["race_data"]["race_completion_max"] >= 4:
+                print("Finished race in:", race_time)
                 end_race_stats["race_finished"] = True
-                end_race_stats["race_time_for_ratio"] = race_time + 3
+                end_race_stats["race_time_for_ratio"] = race_time + 4
                 end_race_stats["race_time"] = race_time
                 rollout_results["race_time"] = race_time
 

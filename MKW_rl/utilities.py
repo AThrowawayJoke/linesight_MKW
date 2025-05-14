@@ -174,7 +174,7 @@ def save_run(
 ):
     run_dir.mkdir(parents=True, exist_ok=True)
     # adjust run_to_video for MKW
-    run_to_video.write_actions_in_tmi_format(rollout_results["actions"], run_dir / inputs_filename)
+    run_to_video.write_actions_in_csv_format(rollout_results["actions"], run_dir / inputs_filename)
     if not inputs_only:
         shutil.copy(base_dir / "config_files" / "config_copy.py", run_dir / "config.bak.py")
         joblib.dump(rollout_results["q_values"], run_dir / "q_values.joblib")

@@ -24,10 +24,10 @@ def write_actions_from_disk_in_tmi_format(infile_path: Path, outfile_path: Path)
     Input : path to a file on disk containing a list of action indices.
     Output: write a text file on disk containing the corresponding inputs, readable by TMI to load the replay
     """
-    write_actions_in_tmi_format(joblib.load(infile_path), outfile_path)
+    write_actions_in_csv_format(joblib.load(infile_path), outfile_path)
 
 
-def write_actions_in_tmi_format(action_idxs: List[int], outfile_path: Path):
+def write_actions_in_csv_format(action_idxs: List[int], outfile_path: Path):
     """
     Input : list of action indices.
     Output: write a text file on disk containing the corresponding inputs, readable by TMI to load the replay
@@ -38,31 +38,18 @@ def write_actions_in_tmi_format(action_idxs: List[int], outfile_path: Path):
     last_press = {"accelerate": -1, "brake": -1, "left": -1, "right": -1}
     for action_idx in action_idxs[:-1]:
         action = config.inputs[action_idx]
-        for key, val in action.items():
-            if val:
-                if last_press[key] == -1:
-                    last_press[key] = time_from
-            elif last_press[key] != -1:
-                outfile.write(
-                    str(round(last_press[key], 2))
-                    + "-"
-                    + str(round(time_from, 2))
-                    + " press "
-                    + {"accelerate": "up", "brake": "down", "left": "left", "right": "right"}[key]
-                    + "\n"
-                )
-                last_press[key] = -1
-        time_from += time_delta_s
-    for key, val in last_press.items():
-        if val != -1:
-            outfile.write(
-                str(round(last_press[key], 2))
-                + "-"
-                + str(round(time_from, 2))
-                + " press "
-                + {"accelerate": "up", "brake": "down", "left": "left", "right": "right"}[key]
-                + "\n"
-            )
+        writestr = ""
+        writestr += str(action["A"]) + ","
+        writestr += str(action["B"]) + ","
+        writestr += str(action["Up"]) + ","
+        writestr += str(action["StickX"]) + ","
+        writestr += str(action["StickY"]) + ","
+        writestr += str(action["TriggerLeft"]) + ","
+        writestr += str(action["TriggerRight"])
+        outfile.write(
+            writestr
+            + "\n"
+        )
     outfile.close()
 
 

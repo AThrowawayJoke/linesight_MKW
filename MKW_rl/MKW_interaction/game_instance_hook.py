@@ -162,7 +162,10 @@ class GameInstanceHook():
 
         if self.load_state_desired:
             self.load_state_desired = False
-            savestate.load_from_file(self.desired_savestate)
+            if self.desired_savestate.startswith("__slot__"):
+                savestate.load_from_slot(int(self.desired_savestate[8:]))
+            else:
+                savestate.load_from_file(self.desired_savestate)
             self.game_data_initiated = False
             # print("Loaded new savestate:", self.desired_savestate)
 

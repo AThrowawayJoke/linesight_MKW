@@ -28,7 +28,7 @@ class GCInputs(TypedDict, total=False):
 
 """
 When creating a list of inputs, several considerations must be made to help reduce the amount of options available to the ai.
-IQN uses discrete inputs. It only chooses one option out of the following list to perform for any given frame.
+This algorithm uses discrete inputs. It only chooses one option out of the following list to perform for any given frame.
 Thus, too many inputs will complicate the network and at some point slow down training in theory. Testing needs to be done to find the amount of slowdown, if any.
 For now (e.g. until I get around to testing it), it is recommended to keep the number of input combinations to below 20.
 
@@ -101,7 +101,7 @@ inputs = [
         "B": False,
         "Up": False,
         "StickX": 0,
-        "StickY": 0,
+        "StickY": 1,
         "TriggerLeft": 0,
         "TriggerRight": 0
     },
@@ -125,11 +125,11 @@ inputs = [
     },
     {  # 3 Drift slight left
         "A": True,
-        "StickX": -0.36,
+        "StickX": -0.29,
         "TriggerRight": 1,
         "B": False,
         "Up": False,
-        "StickY": 0,
+        "StickY": 0.43,
         "TriggerLeft": 0,
     },
     {  # 4 Drift slight right
@@ -138,7 +138,7 @@ inputs = [
         "TriggerRight": 1,
         "B": False,
         "Up": False,
-        "StickY": 0,
+        "StickY": 0.43,
         "TriggerLeft": 0,
     },
     {  # 5 Drift straight
@@ -159,6 +159,33 @@ inputs = [
         "Up": False,
         "StickY": 0,
     },
+    {  # 6 Drift full right item # TODO: Adjust for individual tracks based on item usage
+        "StickX": -1,
+        "A": True,
+        "TriggerRight": 1,
+        "TriggerLeft": 1,
+        "B": False,
+        "Up": False,
+        "StickY": 0,
+    },
+    {  # 7 Full left # Note that inputs #7 and #8 may not be necessary for all tracks, but are useful for alignment after wheelies.
+        "StickX": -1,
+        "A": True,
+        "B": False,
+        "Up": False,
+        "StickY": 0,
+        "TriggerLeft": 0,
+        "TriggerRight": 0
+    },
+    {  # 8 Full right
+        "StickX": 1,
+        "A": True,
+        "B": False,
+        "Up": False,
+        "StickY": 0,
+        "TriggerLeft": 0,
+        "TriggerRight": 0
+    },
     {  # 9 Trick drift full right
         "Up": True,
         "A": True,
@@ -168,8 +195,17 @@ inputs = [
         "TriggerLeft": 0,
         "TriggerRight": 1
     },
-    {  # 12 No accel full right (Start boost/start slide) # 
+    {  # 10 Trick straight
+        "Up": True,
         "A": True,
+        "B": False,
+        "StickX": 0,
+        "StickY": 0,
+        "TriggerLeft": 0,
+        "TriggerRight": 0
+    },
+    {  # 12 No accel full right (Start boost/start slide) # 
+        "A": False,
         "B": False,
         "Up": False,
         "StickX": 1,

@@ -31,7 +31,7 @@ linux_launch_game_path = "path_to_be_filled_only_if_on_linux"
 windows_TMLoader_profile_name = "default"
 
 # Location of the game file for MKW
-game_path = "C:\\Games\\Dolphin-x64\\Games\\MKW_Copies\\Mario_Kart_Wii\\DATA\\sys\\main.dol"
+game_path = "C:\\Games\\Dolphin-x64\\Games\\MKW_Copies\\Mario_Kart_Wii.rvz"
 
 # If on windows, path where the Dolphin exe can be found.
 # Usually Path(os.path.expanduser("~") / "AppData" / "Local" / "TMLoader" / "TMLoader.exe"
@@ -42,7 +42,7 @@ windows_dolphinexe_filename = "Dolphin.exe"
 
 # Video backend for Dolphin to use (see Dolphin Command Line Usage)
 # Options include D3D, D3D12 (both Windows exclusive), OGL, Vulkan, Null (Game will not be rendered), and SoftwareRenderer
-video_backend = "OGL"
+video_backend = "Vulkan"
 
 # Dolphin emulation speed. Usually set to unlimited (0.0), but can be set to 0.5 for 100% or 1.0 for 200% and so forth. I do not know why it is multiplied by 2, just be aware that it is.
 game_speed = "0.0"

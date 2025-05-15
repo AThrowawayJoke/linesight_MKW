@@ -28,12 +28,13 @@ from config_files.user_config import *
 W_downsized = 153
 H_downsized = 114
 
-run_name = "it_inputs_now"
+run_name = "rMC3_basic"
 running_speed = 80
 restart_race_command = "restart_race"
 
-tm_engine_step_per_action = 4
+tm_engine_step_per_action = 2
 f_per_action = tm_engine_step_per_action
+game_running_fps = 30
 n_zone_centers_in_inputs = 40
 one_every_n_zone_centers_in_inputs = 20
 n_zone_centers_extrapolate_after_end_of_map = 1000
@@ -42,10 +43,10 @@ n_zone_centers_extrapolate_before_start_of_map = 20
 n_prev_actions_in_inputs = 5
 
 n_contact_material_physics_behavior_types = 4  # See contact_materials.py
-cutoff_rollout_if_race_not_finished_within_duration_f = 21_600 # 6m at 60fps
-cutoff_rollout_if_no_vcp_passed_within_duration_f = 240 # 4s at 60fps 
+cutoff_rollout_if_race_not_finished_within_duration_f = game_running_fps * 10_800 # 6m at 30fps
+cutoff_rollout_if_no_vcp_passed_within_duration_f = game_running_fps * 4 # 4s
 
-temporal_mini_race_duration_f = 420
+temporal_mini_race_duration_f = game_running_fps * 7
 temporal_mini_race_duration_actions = temporal_mini_race_duration_f // f_per_action
 oversample_long_term_steps = 40
 oversample_maximum_term_steps = 5
@@ -55,7 +56,7 @@ margin_to_announce_finish_meters = 700
 
 global_schedule_speed = 1
 
-constant_reward_per_action = -2 / (7 * (60 / f_per_action))
+constant_reward_per_action = -2 / (7 * (game_running_fps / f_per_action))
 
 epsilon_schedule = [
     (0, 1),
@@ -80,12 +81,14 @@ engineered_neoslide_reward_schedule = [
 engineered_kamikaze_reward_schedule = [
     (0, 0),
 ]
-engineered_close_to_vcp_reward_schedule = [
-    (0, 1 * -constant_reward_per_action), # 2 per action
+
+"""(0, 1 * -constant_reward_per_action), # 2 per action
     (50_000, 1 * -constant_reward_per_action),
     (500_000 * global_schedule_speed, 0.8 * -constant_reward_per_action),
     (3_000_000 * global_schedule_speed, 0.4 * -constant_reward_per_action),
-    (5_000_000 * global_schedule_speed, 0 * -constant_reward_per_action),
+    (5_000_000 * global_schedule_speed, 0 * -constant_reward_per_action),"""
+engineered_close_to_vcp_reward_schedule = [
+    (0, 0)
 ]
 # Reward A.I. for accelerating
 engineered_holding_A_reward_schedule = [
@@ -94,12 +97,12 @@ engineered_holding_A_reward_schedule = [
     (300_000 * global_schedule_speed, 1),
     (3_000_000 * global_schedule_speed, 0),
 ]
-# Punish A.I. for using an item
+# Punish A.I. for using an item as a ratio multiplier to progress made during boost
 engineered_item_usage_reward_schedule = [
-    (0, -20),
-    (50_000, -20),
-    (300_000 * global_schedule_speed, -2),
-    (3_000_000 * global_schedule_speed, 0),
+    (0, 0.2),
+    (50_000, 0.2),
+    (300_000 * global_schedule_speed, 0.2),
+    (3_000_000 * global_schedule_speed, 0.5),
 ]
 
 engineered_supergrinding_reward_schedule = [
@@ -134,9 +137,9 @@ reward_per_m_advanced_along_centerline = 5 / 500
 n_steps = 3
 
 # -4 / time_per_lap * lap_count * actions_per_second
-expected_lap_duration_s = 28
+expected_lap_duration_s = 35
 
-expected_lap_duration_per_action = expected_lap_duration_s * (60 / f_per_action) # at 60 fps
+expected_lap_duration_per_action = expected_lap_duration_s * (game_running_fps / f_per_action) # at 60 fps
 average_lap_increment_per_action = 1 / expected_lap_duration_per_action
 total_second_increment_expected = 3 / (expected_lap_duration_s * 3 / 7)
 
@@ -159,7 +162,7 @@ lap_completion_required_per_expected_lap_completion = required_progress_ratio * 
 
 # 2000 per lap, 1800 frames per lap, ~1.1 reward per frame
 button_A_held_reward_per_f = reward_per_m_advanced_along_centerline / expected_lap_duration_per_action
-button_A_held_reward_per_s = button_A_held_reward_per_f * 60
+button_A_held_reward_per_s = button_A_held_reward_per_f * game_running_fps
 # Expected to spend ~30s per lap on short tracks, ~45s on longer tracks.
 # Use ratio of m advanced to determine reward
 # Unknown if adjusting for start boost would be good
@@ -262,7 +265,7 @@ use_jit = True
 # We recommend trying different values and finding the one that maximises the number of batches done per unit of time.
 # Note that each additional instance requires a separate folder containing a full Dolphin installation, and should be named sequentially. (Dolphin's game save files cannot be shared between instances)
 # For instance, if the original install is called 'dolphin_folder', installations 2 and 3 should be named 'dolphin_folder2' and 'dolphin_folder3'.
-gpu_collectors_count = 4
+gpu_collectors_count = 3
 
 # Every n batches, each collection process updates it's network to match the current Online Network as defined by DQN
 send_shared_network_every_n_batches = 10
@@ -358,8 +361,10 @@ map_cycle = []
 map_cycle += [
     # repeat(("rGV2_auto", "linesight_savestates\\rGV2_auto_hitbox_charge2.sav", "rGV2.npy", True, True), 4),
     # repeat(("rGV2_auto", "linesight_savestates\\rGV2_auto_hitbox_charge2.sav", "rGV2.npy", False, True), 1),
-    repeat(("rGV2", "linesight_savestates\\rGV2_F_FR_hitbox.sav", "rGV2.npy", True, True), 4),
-    repeat(("rGV2", "linesight_savestates\\rGV2_F_FR_hitbox.sav", "rGV2.npy", False, True), 1),
+    # repeat(("rGV2", "linesight_savestates\\rGV2_F_FR_hitbox.sav", "rGV2.npy", True, True), 4),
+    # repeat(("rGV2", "linesight_savestates\\rGV2_F_FR_hitbox.sav", "rGV2.npy", False, True), 1),
     # repeat(("rMC3", "linesight_savestates\\rMC3_D_MB_hitbox.sav", "rMC3.npy", True, True), 4),
     # repeat(("rMC3", "linesight_savestates\\rMC3_D_MB_hitbox.sav", "rMC3.npy", False, True), 1),
+    repeat(("rMC3", "__slot__2", "rMC3.npy", True, True), 4), # load from savestate slot instead of file?
+    repeat(("rMC3", "__slot__2", "rMC3.npy", False, True), 1),
 ]

@@ -82,9 +82,17 @@ def fill_buffer_from_rollout_with_n_steps_rule(
         )"""
         if rollout_results["state_float"][i]["race_data"]["state"] == 2: # Only apply these rewards during the actual race (Not race finished, not during countdown timer)
             reward_into[i] += config_copy.constant_reward_per_action
-            reward_into[i] += (
+            temp_completion_reward = (
                 rollout_results["race_completion"][i] - rollout_results["race_completion"][i - 1] # meters progressed (negative if backwards)
-            ) * config_copy.reward_per_m_advanced_along_centerline
+            ) * config_copy.reward_per_m_advanced_along_centerline # Based on estimated time to lap completion
+
+            # discourage mushroom usage according to speed increase for the duration of the boost
+            # 83 > 120 = 40 speed increase. 1/3rd of progression. so, discount roughly 40% (?) of progression
+            if rollout_results["state_float"][i]["boost_data"]["shroom_boost"] > 60: # only include mushrooms, as boost panels/trick ramps give 60
+                temp_completion_reward *= 0.2 # 0.6 (40% discount for speed increase) divided by 30/90 as we can't confirm source of boost outside that range
+            
+            reward_into[i] += temp_completion_reward
+
             if i < n_frames - 1:
                 if engineered_close_to_vcp_reward != 0:
                     reward_into[i] += engineered_close_to_vcp_reward * np.interp(max(config_copy.engineered_reward_min_dist_to_cur_vcp,
@@ -93,6 +101,7 @@ def fill_buffer_from_rollout_with_n_steps_rule(
                         [config_copy.engineered_reward_min_dist_to_cur_vcp, config_copy.engineered_reward_max_dist_to_cur_vcp],
                         [0.5, -1]
                     ) # normalizing to 1, -1 using np.interp so when we multiply by engineered reward we are reasonable
+                
         if i < n_frames - 1: # apply these rewards even during countdown
             """if config_copy.final_speed_reward_per_f_per_s != 0:
                 # car is driving forward

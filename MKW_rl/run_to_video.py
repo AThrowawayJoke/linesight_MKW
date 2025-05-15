@@ -33,18 +33,32 @@ def write_actions_in_csv_format(action_idxs: List[int], outfile_path: Path):
     Output: write a text file on disk containing the corresponding inputs, readable by TMI to load the replay
     """
     outfile = open(outfile_path, "w")
-    time_from = 0
-    time_delta_s = config.tm_engine_step_per_action * 0.01
-    last_press = {"accelerate": -1, "brake": -1, "left": -1, "right": -1}
+    convert_range = {
+        1: 7,
+        0.57: 6,
+        0.5 : 5,
+        0.43: 4,
+        0.36: 3,
+        0.29: 2,
+        0.22: 1,
+        0: 0,
+        -0.156: -1,
+        -0.22: -2,
+        -0.29: -3,
+        -0.36: -4,
+        -0.43: -5,
+        -0.5: -6,
+        -1: -7
+        }
     for action_idx in action_idxs[:-1]:
         action = config.inputs[action_idx]
         writestr = ""
-        writestr += str(action["A"]) + ","
-        writestr += str(action["B"]) + ","
-        writestr += str(action["Up"]) + ","
-        writestr += str(action["StickX"]) + ","
-        writestr += str(action["StickY"]) + ","
+        writestr += str(1 if action["A"] else 0) + ","
+        writestr += str(1 if action["B"] else 0) + ","
         writestr += str(action["TriggerLeft"]) + ","
+        writestr += str(convert_range[action["StickX"]]) + ","
+        writestr += str(convert_range[action["StickY"]]) + ","
+        writestr += str(1 if action["Up"] else 0) + ","
         writestr += str(action["TriggerRight"])
         outfile.write(
             writestr

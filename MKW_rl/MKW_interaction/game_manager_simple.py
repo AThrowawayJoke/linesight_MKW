@@ -492,9 +492,8 @@ class GameManager:
             rollout_results["state_float"].append(game_data)
 
             n_th_action_we_compute += 1
-
-            if frames_processed % (self.run_steps_per_action * config_copy.update_inference_network_every_n_actions) == 0:
-                print("Updating network")
+            if (n_th_action_we_compute % config_copy.update_inference_network_every_n_actions == 0):
+                # print("Updating network")
                 update_network()
 
             if not self.timeout_has_been_set:

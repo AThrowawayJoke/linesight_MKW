@@ -28,16 +28,20 @@ from config_files.user_config import *
 W_downsized = 153
 H_downsized = 114
 
-run_name = "rMC3_basic"
+run_name = "LC_mushroom_retry"
 running_speed = 80
 restart_race_command = "restart_race"
+
+LC_punish_line = 44600
+LC_punish_rate = 5
+LC_mushroom_point = 4.68
 
 tm_engine_step_per_action = 2
 f_per_action = tm_engine_step_per_action
 game_running_fps = 30
 n_zone_centers_in_inputs = 40
-one_every_n_zone_centers_in_inputs = 20
-n_zone_centers_extrapolate_after_end_of_map = 1000
+one_every_n_zone_centers_in_inputs = 5
+n_zone_centers_extrapolate_after_end_of_map = 500
 n_zone_centers_extrapolate_before_start_of_map = 20
 
 n_prev_actions_in_inputs = 5
@@ -54,7 +58,7 @@ min_horizon_to_update_priority_actions = temporal_mini_race_duration_actions - 4
 # If mini_race_time == mini_race_duration this is the end of the minirace
 margin_to_announce_finish_meters = 700
 
-global_schedule_speed = 1
+global_schedule_speed = 1.5
 
 constant_reward_per_action = -2 / (7 * (game_running_fps / f_per_action))
 
@@ -99,10 +103,10 @@ engineered_holding_A_reward_schedule = [
 ]
 # Punish A.I. for using an item as a ratio multiplier to progress made during boost
 engineered_item_usage_reward_schedule = [
-    (0, 0.2),
-    (50_000, 0.2),
-    (300_000 * global_schedule_speed, 0.2),
-    (3_000_000 * global_schedule_speed, 0.5),
+    (0, 5),
+    (50_000, 5),
+    (300_000 * global_schedule_speed, 5),
+    (3_000_000 * global_schedule_speed, 4),
 ]
 
 engineered_supergrinding_reward_schedule = [
@@ -137,7 +141,7 @@ reward_per_m_advanced_along_centerline = 5 / 500
 n_steps = 3
 
 # -4 / time_per_lap * lap_count * actions_per_second
-expected_lap_duration_s = 35
+expected_lap_duration_s = 25
 
 expected_lap_duration_per_action = expected_lap_duration_s * (game_running_fps / f_per_action) # at 60 fps
 average_lap_increment_per_action = 1 / expected_lap_duration_per_action
@@ -191,9 +195,9 @@ number_times_single_memory_is_used_before_discard = 32  # 32 // 4
 # Schedule how many state-action pairs we save in memory at specific sections of training
 memory_size_schedule = [
     (0, (50_000, 20_000)),
-    (500_000 * global_schedule_speed, (100_000, 75_000)),
-    (1_000_000 * global_schedule_speed, (400_000, 300_000)),
-    (2_000_000 * global_schedule_speed, (1_100_000, 750_000)),
+    (500_000 * global_schedule_speed, (125_000, 50_000)),
+    (1_000_000 * global_schedule_speed, (400_000, 125_000)),
+    (2_000_000 * global_schedule_speed, (1_100_000, 250_000)),
 ]
 lr_schedule = [
     (0, 1e-3),
@@ -245,10 +249,10 @@ max_allowable_distance_to_virtual_checkpoint = np.sqrt((distance_between_checkpo
 timeout_during_run_ms = 10_100
 timeout_between_runs_ms = 600_000_000
 tmi_protection_timeout_s = 500
-game_reboot_interval = 3600 * 12  # In seconds
+game_reboot_interval = 3600 * 8  # In seconds
 
 # Do not save runs until after we start getting roughly human-level results (i.e. prevent saving 1000s of extra bad runs)
-frames_before_save_best_runs = 1_500_000
+frames_before_save_best_runs = 3_000_000
 
 plot_race_time_left_curves = False
 n_transitions_to_plot_in_distribution_curves = 1000
@@ -365,6 +369,10 @@ map_cycle += [
     # repeat(("rGV2", "linesight_savestates\\rGV2_F_FR_hitbox.sav", "rGV2.npy", False, True), 1),
     # repeat(("rMC3", "linesight_savestates\\rMC3_D_MB_hitbox.sav", "rMC3.npy", True, True), 4),
     # repeat(("rMC3", "linesight_savestates\\rMC3_D_MB_hitbox.sav", "rMC3.npy", False, True), 1),
-    repeat(("rMC3", "__slot__2", "rMC3.npy", True, True), 4), # load from savestate slot instead of file?
-    repeat(("rMC3", "__slot__2", "rMC3.npy", False, True), 1),
+    # repeat(("rMC3", "__slot__2", "rMC3.npy", True, True), 4),
+    # repeat(("rMC3", "__slot__2", "rMC3.npy", False, True), 1),
+    # repeat(("MG", "linesight_savestates\\MG_F_SS.sav", "MG.npy", True, True), 4), # load from savestate slot instead of file?
+    # repeat(("MG", "linesight_savestates\\MG_F_SS.sav", "MG.npy", False, True), 1),
+    repeat(("LC", "linesight_savestates\\LC_F_Sp.sav", "LC.npy", True, True), 4),
+    repeat(("LC", "linesight_savestates\\LC_F_Sp.sav", "LC.npy", False, True), 1),
 ]

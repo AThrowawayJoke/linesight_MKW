@@ -150,17 +150,8 @@ inputs = [
         "StickY": 0,
         "TriggerLeft": 0,
     },
-    {  # 6 Drift full right item # TODO: Adjust for individual tracks based on item usage
+    {  # 6 Drift full right item # Adjust for individual tracks based on item usage
         "StickX": 1,
-        "A": True,
-        "TriggerRight": 1,
-        "TriggerLeft": 1,
-        "B": False,
-        "Up": False,
-        "StickY": 0,
-    },
-    {  # 6 Drift full right item # TODO: Adjust for individual tracks based on item usage
-        "StickX": -1,
         "A": True,
         "TriggerRight": 1,
         "TriggerLeft": 1,
@@ -186,7 +177,7 @@ inputs = [
         "TriggerLeft": 0,
         "TriggerRight": 0
     },
-    {  # 9 Trick drift full right
+    {  # 9 Trick full right
         "Up": True,
         "A": True,
         "B": False,
@@ -216,6 +207,15 @@ inputs = [
 ]
 
 """
+    {  # 6 Drift full left item # Adjust for individual tracks based on item usage
+        "StickX": -1,
+        "A": True,
+        "TriggerRight": 1,
+        "TriggerLeft": 1,
+        "B": False,
+        "Up": False,
+        "StickY": 0,
+    },
     {  # 7 Full left # Note that inputs #7 and #8 may not be necessary for all tracks, but are useful for alignment after wheelies.
         "StickX": -1,
         "A": True,
@@ -282,4 +282,4 @@ inputs = [
 """
 
 action_forward_idx = 0  # Accelerate forward, don't turn
-action_backward_idx = 9  # Don't move, don't turn
+action_backward_idx = 11  # Don't move, don't turn

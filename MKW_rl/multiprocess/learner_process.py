@@ -329,7 +329,7 @@ def learner_process_fn(
             "tmi_protection_cutoff": end_race_stats["tmi_protection_cutoff"],
             "worker_time_in_rollout_percentage": rollout_results["worker_time_in_rollout_percentage"],
         }
-        print("Race time ratio  ", race_stats_to_write[f"race_time_ratio_{map_name}"])
+        # print("Race time ratio  ", race_stats_to_write[f"race_time_ratio_{map_name}"])
 
         if not is_explo:
             race_stats_to_write[f"avg_Q_{map_status}_{map_name}"] = np.mean(rollout_results["q_values"])

@@ -58,7 +58,7 @@ def fill_buffer_from_rollout_with_n_steps_rule(
     engineered_button_A_pressed_reward=2,
     engineered_supergrinding_reward=0.0,
     engineered_close_to_vcp_reward=0,
-    engineered_start_boost_reward=0.019,
+    engineered_start_boost_reward=0,
 ):
     assert len(rollout_results["frames"]) == len(rollout_results["current_zone_idx"])
     n_frames = len(rollout_results["frames"])
@@ -88,8 +88,18 @@ def fill_buffer_from_rollout_with_n_steps_rule(
 
             # discourage mushroom usage according to speed increase for the duration of the boost
             # 83 > 120 = 40 speed increase. 1/3rd of progression. so, discount roughly 40% (?) of progression
-            if rollout_results["state_float"][i]["boost_data"]["shroom_boost"] > 50 and temp_completion_reward > 0:
+            if (rollout_results["state_float"][i]["boost_data"]["shroom_boost"] > 60
+                and temp_completion_reward > 0
+                and not rollout_results["state_float"][i]["surface_properties"]): # not on offroad, shouldn't have used shroom
                 temp_completion_reward = 0 # 0.6 (40% discount for speed increase) divided by 30/90 as we can't confirm source of boost outside that range
+
+            if rollout_results["state_float"][i]["race_data"]["item_count"] < rollout_results["state_float"][i - 1]["race_data"]["item_count"]:
+                # used item punish
+                reward_into[i] += config_copy.constant_reward_per_action * engineered_item_usage_reward
+
+            # LUIGI CIRCUIT FORCE SHORTCUT
+            if rollout_results["state_float"][i]["kart_data"]["position"][2] > config_copy.LC_punish_line:
+                reward_into[i] += config_copy.constant_reward_per_action * config_copy.LC_punish_rate # triple punishment
             
             reward_into[i] += temp_completion_reward
 
@@ -198,7 +208,7 @@ def fill_buffer_from_rollout_with_n_steps_rule(
                 terminal_actions,
             )
         )
-    print("Sum of rewards for this rollout:", sum(reward_into))
+    # print("Sum of rewards for this rollout:", sum(reward_into))
     number_memories_added_train += len(Experiences_For_Buffer)
     if len(Experiences_For_Buffer) > 1:
         buffer.extend(Experiences_For_Buffer)

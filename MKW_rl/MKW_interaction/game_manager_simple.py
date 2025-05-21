@@ -368,6 +368,7 @@ class GameManager:
         # self.sock.send([False, False, computed_action, savestate_path])
         # self.latest_map_path_requested = savestate_path # this seems backwards... TODO
 
+        manual_item_count = 3
         while not this_rollout_is_finished:
             """
             This loop needs to perform these essential functions:
@@ -413,6 +414,11 @@ class GameManager:
             instrumentation__convert_frame += pc5 - pc4
             game_data = self.sock.recv()
             # print("Game manager rollout() :: race time is", game_data["race_data"]["race_time"])
+            if game_data["boost_data"]["shroom_boost"] > 86:
+                manual_item_count -= 1
+
+            game_data["race_data"]["item_count"] = manual_item_count
+
             network_inputs = Network_Inputs(game_data, rollout_results["actions"])
             # print("Game data converted to:", network_inputs.get_flattened_game_data())
             race_time = max([game_data["race_data"]["race_time"], 1e-12]) # Epsilon trick to avoid division by zero
@@ -473,9 +479,16 @@ class GameManager:
             pc8 = time.perf_counter_ns()
             instrumentation__exploration_policy += pc8 - pc7
 
-            computed_action = config_copy.inputs[action_idx]  # determine next input
+            computed_action = config_copy.inputs[action_idx].copy()  # determine next input
 
-            # Oh, the joy of not knowing what this is for but putting it in anyway
+            if computed_action["TriggerLeft"] != 0:
+                # pressing item button
+                # print("Items left:", manual_item_count, "While race is:", game_data["race_data"]["race_completion_max"])
+                if manual_item_count <= math.floor(-(game_data["race_data"]["race_completion_max"] - config_copy.LC_mushroom_point)):
+                    computed_action["TriggerLeft"] = 0 # Disable item button if mushroom usage is bad
+                    # print("Prevented item:", manual_item_count, "While max is:", math.floor(-(game_data["race_data"]["race_completion_max"] - 4)))
+
+            # Save the estimated Q-value of the starting state (start of the track)
             if n_th_action_we_compute == 0:
                 end_race_stats["value_starting_frame"] = q_value
                 for i, val in enumerate(np.nditer(q_values)):
@@ -508,9 +521,7 @@ class GameManager:
             # Failed to finish race in time. Note that race_time is used to prevent resetting during the countdown
             if ((frames_processed > self.max_overall_duration_f or frames_processed > last_progress_improvement_f + self.max_minirace_duration_f) 
                 and not this_rollout_is_finished and race_time > 2.5):
-                print("This rollout has finished. Frames processed:", frames_processed, "Last progress improvement:", last_progress_improvement_f,
-                    "Race completion:", game_data["race_data"]["race_completion_max"])
-                print("Failed at:", current_zone_idx, "Max completion:", rollout_results["furthest_zone_idx"])
+                #print("Failed at:", current_zone_idx, "Max completion:", rollout_results["furthest_zone_idx"])
                 
                 end_race_stats["race_finished"] = False
                 end_race_stats["race_time_for_ratio"] = race_time + 3

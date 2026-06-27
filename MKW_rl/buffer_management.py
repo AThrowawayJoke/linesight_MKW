@@ -178,10 +178,10 @@ def fill_buffer_from_rollout_with_n_steps_rule(
                     reward_into[i] += -engineered_start_boost_reward if rollout_results["state_float"][i]["start_boost_charge"] <= 0.925 else 0 """
 
     print("Rewards for progress:", np.sum(reward_into_progress))
-    print("Constant reward:", np.sum(reward_into_constant))
+    """print("Constant reward:", np.sum(reward_into_constant))
     print("Rewards for EV:", np.sum(reward_into_ev))
     print("Seconds run:", n_frames / (config_copy.game_running_fps / config_copy.f_per_action))
-    print("Total Rewards:", np.sum(reward_into))
+    print("Total Rewards:", np.sum(reward_into))"""
 
     for i in range(n_frames - 1):  # Loop over all frames that were generated
         # Switch memory buffer sometimes

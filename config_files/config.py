@@ -24,14 +24,16 @@ import numpy as np
 from config_files.inputs_list import *
 from config_files.user_config import *
 
-W_downsized = 153
-H_downsized = 114
+run_name = "rMC_pynoko"
 
-run_name = "rMC_dolphin_flow_test1"
-
-use_pynoko = False
+use_pynoko = True
 if use_pynoko:
     import pynoko # used for data-types
+    W_downsized = 150
+    H_downsized = 100
+else:
+    W_downsized = 153
+    H_downsized = 114
 
 # gpu_collectors_count is the number of Dolphin instances that will be launched in parallel.
 # It is recommended that users adjust this number depending on the performance of their machine.
@@ -44,8 +46,10 @@ gpu_collectors_count = 4
 global_schedule_speed = 1.5
 n_steps = 3
 
-f_per_action = 2
-game_running_fps = 30
+# Number of frames per agent action
+f_per_action = 4
+# Frames per second the game is running at
+game_running_fps = 60
 use_miniraces = True
 
 """
@@ -65,7 +69,10 @@ n_prev_drift_actions_in_inputs = 10
 float_input_dim = 56 + 7 * n_prev_actions_in_inputs + n_prev_drift_actions_in_inputs + 3 * n_zone_centers_in_inputs
 
 float_hidden_dim = 256
-conv_head_output_dim = 5280
+if use_pynoko:
+    conv_head_output_dim = 4320 # pynoko
+else:
+    conv_head_output_dim = 5280 # dolphin
 dense_hidden_dimension = 512
 iqn_embedding_dimension = 64
 iqn_n = 8  # must be an even number because we sample tau symmetrically around 0.5
@@ -446,8 +453,8 @@ map_cycle += [
     # repeat(("rMC3", "linesight_savestates\\rMC3_D_MB.sav", "rMC3.npy", False, True), 1),
     # repeat(("rMC3", "__slot__2", "rMC3.npy", True, True), 4), # Using __slot__X for dolphin save slots. Not recommended, as the save state depends on the dolphin save.
     # repeat(("rMC3", "__slot__2", "rMC3.npy", False, True), 1),
-    repeat(("rMC", "linesight_savestates/rMC_F_FR_linux.sav", "rMC.npy", True, True), 4),
-    repeat(("rMC", "linesight_savestates/rMC_F_FR_linux.sav", "rMC.npy", False, True), 1),
-    # repeat(("rMC", [pynoko.Course.GCN_Mario_Circuit, pynoko.Character.Funky_Kong, pynoko.Vehicle.Flame_Runner], "rMC.npy", True, True), 4),
-    # repeat(("rMC", [pynoko.Course.GCN_Mario_Circuit, pynoko.Character.Funky_Kong, pynoko.Vehicle.Flame_Runner], "rMC.npy", False, True), 1),
+    # repeat(("rMC", "linesight_savestates/rMC_F_FR_linux.sav", "rMC.npy", True, True), 4),
+    # repeat(("rMC", "linesight_savestates/rMC_F_FR_linux.sav", "rMC.npy", False, True), 1),
+    repeat(("rMC", [pynoko.Course.GCN_Mario_Circuit, pynoko.Character.Funky_Kong, pynoko.Vehicle.Flame_Runner], "rMC.npy", True, True), 4),
+    repeat(("rMC", [pynoko.Course.GCN_Mario_Circuit, pynoko.Character.Funky_Kong, pynoko.Vehicle.Flame_Runner], "rMC.npy", False, True), 1),
 ]

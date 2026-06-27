@@ -194,7 +194,7 @@ class GameManager:
 
     def ensure_game_launched(self):
         if not self.is_game_running():
-            print("Game not found. Starting Dolphin.")
+            print("Game not found. Launching MKW.")
             self.launch_game()
 
     """def select_map_savestate(self, savestate_path: str, zone_centers: npt.NDArray):
@@ -214,17 +214,19 @@ class GameManager:
         ) = map_loader.sync_virtual_and_real_checkpoints(zone_centers, savestate_path)"""
 
     def pynoko_launch_game(self):
-        self.pynoko_system = pynoko.KHostSystem()
-        # Activate a dummy time trial to call init()
-        self.pynoko_system.configureTimeTrial(pynoko.Course.GCN_Mario_Circuit, pynoko.Character.Funky_Kong, pynoko.Vehicle.Flame_Runner, False)
-        self.pynoko_system.init() # initialization so all rollout restarts can use .reset
+        if self.pynoko_system is None:
+            self.pynoko_system = pynoko.KHostSystem()
+            # Activate a dummy time trial to call init()
+            self.pynoko_system.configureTimeTrial(pynoko.Course.GCN_Mario_Circuit, pynoko.Character.Funky_Kong, pynoko.Vehicle.Flame_Runner, False)
+            self.pynoko_system.init() # initialization so all rollout restarts can use .reset
         self.last_game_reboot = time.perf_counter()
         self.latest_map_path_requested = -1
         self.msgtype_response_to_wakeup_TMI = None
         print("pynoko initialized")
 
     def pynoko_close_game(self):
-        self.pynoko_system = None
+        # Prevent pynoko restarts (causes crashes)
+        # self.pynoko_system = None
         self.timeout_has_been_set = False
         self.game_activated = False
 
@@ -509,8 +511,9 @@ class GameManager:
             if config_copy.use_pynoko:
                 self.pynoko_system.setInput(inputs[0], inputs[1], inputs[2], inputs[3])
                 self.pynoko_system.calc()
-                # frame_data = self.pynoko_system.getFrame()[:FRAME_HEIGHT, :FRAME_WIDTH, 2::-1]
-                frame_data = np.zeros((FRAME_HEIGHT, FRAME_WIDTH, 3), dtype=np.uint8)
+                self.pynoko_system.draw()
+                frame_data = self.pynoko_system.getFrame()[::2, ::2, 2::-1]
+                # print(len(frame_data), len(frame_data[0]), len(frame_data[0][0]))
             else:
                 self.sock.sendall(pickle.dumps([True, True, computed_action, ""]))
                 

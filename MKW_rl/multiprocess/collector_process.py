@@ -135,7 +135,7 @@ def collector_process_fn(
         else:
             last_loop_finished = False
         time_since_last_queue_push = time.perf_counter()
-        print("", flush=True)
+        print("", flush=True, end="")
 
         if not mkw.last_rollout_crashed:
             rollout_queue.put(

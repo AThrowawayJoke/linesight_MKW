@@ -71,7 +71,7 @@ set_random_seed(random_seed)
 
 
 def signal_handler(sig, frame): # receive command to kill game instances
-    print("Received SIGINT signal. Killing all open Dolphin instances.")
+    print("Received SIGINT signal. Killing all open MKW instances.")
     clear_tm_instances()
     clear_port_files()
 
